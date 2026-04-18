@@ -48,7 +48,7 @@ Keep it family-friendly, encouraging and concise.`
         ...history,
         { role: 'user', content: userMessage },
       ],
-      max_tokens: 350,
+      max_completion_tokens: 350,
       temperature: 0.7,
     })
 
