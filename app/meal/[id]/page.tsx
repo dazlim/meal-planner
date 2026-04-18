@@ -3,6 +3,7 @@ import { getCustomMeals } from '@/lib/recipes-db'
 import type { CustomMeal } from '@/lib/recipes-db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import Header from '@/components/Header'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,11 +34,7 @@ export default async function MealPage({ params }: { params: { id: string } }) {
 function MealDetail({ meal }: { meal: AnyMeal }) {
   return (
     <div className="min-h-screen bg-[#f0ebe0]">
-      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b]">
-        <h1 className="text-white font-bold text-lg tracking-[0.2em] uppercase">
-          Dinner Menu
-        </h1>
-      </header>
+      <Header />
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         <Link

@@ -1,14 +1,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import Header from '@/components/Header'
 
 export default function CoverPage() {
   return (
     <div className="min-h-screen bg-[#f0ebe0]">
-      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b]">
-        <h1 className="text-white font-bold text-lg tracking-[0.2em] uppercase">
-          Dinner Menu
-        </h1>
-      </header>
+      <Header />
 
       <main className="flex flex-col items-center justify-center px-6 py-16">
         <div className="relative w-full max-w-sm h-56 md:h-72 mb-10 overflow-hidden border-4 border-[#2b2b2b] shadow-[8px_8px_0px_#2b2b2b]">

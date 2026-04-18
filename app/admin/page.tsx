@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { meals as staticMeals } from '@/data/meals'
 import type { CustomMeal } from '@/lib/recipes-db'
+import Header from '@/components/Header'
 
 type GeneratedRecipe = Omit<CustomMeal, 'id' | 'source' | 'createdAt'>
 
@@ -57,11 +57,7 @@ export default function AdminPage() {
   if (!authed) {
     return (
       <div className="min-h-screen bg-[#f0ebe0]">
-        <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b]">
-          <h1 className="text-white font-bold text-lg tracking-[0.2em] uppercase">
-            Dinner Menu
-          </h1>
-        </header>
+        <Header />
         <main className="flex flex-col items-center justify-center min-h-[calc(100vh-72px)] px-6">
           <div className="w-full max-w-sm border-2 border-[#2b2b2b] shadow-[6px_6px_0px_#2b2b2b] bg-[#f0ebe0] p-8">
             <h2 className="text-lg font-bold uppercase tracking-[0.2em] text-[#2b2b2b] mb-6">
@@ -106,22 +102,21 @@ function AdminUI({ password, onLogout }: { password: string; onLogout: () => voi
 
   return (
     <div className="min-h-screen bg-[#f0ebe0]">
-      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b] flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="text-white font-bold text-lg tracking-[0.2em] uppercase hover:text-white/70 transition-colors">
-            Dinner Menu
-          </Link>
+      <Header
+        badge={
           <span className="text-[#c0492b] font-bold text-xs tracking-[0.2em] uppercase border border-[#c0492b] px-2 py-0.5">
             Admin
           </span>
-        </div>
-        <button
-          onClick={onLogout}
-          className="text-white/50 text-xs uppercase tracking-[0.15em] hover:text-white transition-colors"
-        >
-          Log out
-        </button>
-      </header>
+        }
+        right={
+          <button
+            onClick={onLogout}
+            className="text-white/50 text-xs uppercase tracking-[0.15em] hover:text-white transition-colors"
+          >
+            Log out
+          </button>
+        }
+      />
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         {/* Tabs */}
