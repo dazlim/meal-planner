@@ -13,7 +13,7 @@ export default function Header({ badge, right }: HeaderProps) {
 
   return (
     <div className="relative z-50">
-      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b] flex items-center justify-between">
+      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#b85476] flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -56,7 +56,7 @@ export default function Header({ badge, right }: HeaderProps) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
 
           {/* Dropdown */}
-          <div className="absolute top-full left-0 right-0 bg-[#2b2b2b] border-b-4 border-[#c0492b] z-50">
+          <div className="absolute top-full left-0 right-0 bg-[#2b2b2b] border-b-4 border-[#b85476] z-50">
             <Link
               href="/menu"
               onClick={() => setOpen(false)}

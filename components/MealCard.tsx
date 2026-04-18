@@ -22,7 +22,7 @@ export default function MealCard({ meal }: MealCardProps) {
       </Link>
       <Link
         href={`/meal/${meal.id}?view=shopping`}
-        className="flex items-center justify-center px-4 border-l-2 border-[#2b2b2b] text-[#2b2b2b]/50 hover:bg-[#c0492b] hover:text-[#f0ebe0] hover:border-[#c0492b] transition-colors duration-100 flex-shrink-0"
+        className="flex items-center justify-center px-4 border-l-2 border-[#2b2b2b] text-[#2b2b2b]/50 hover:bg-[#b85476] hover:text-[#f0ebe0] hover:border-[#b85476] transition-colors duration-100 flex-shrink-0"
         title="Shopping list"
         aria-label={`Shopping list for ${meal.title}`}
       >

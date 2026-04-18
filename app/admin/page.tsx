@@ -73,17 +73,17 @@ export default function AdminPage() {
                   value={pw}
                   onChange={(e) => setPw(e.target.value)}
                   placeholder="Enter admin password"
-                  className="w-full border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#c0492b]"
+                  className="w-full border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#b85476]"
                   autoFocus
                 />
               </div>
               {pwError && (
-                <p className="text-xs text-[#c0492b] font-bold">{pwError}</p>
+                <p className="text-xs text-[#b85476] font-bold">{pwError}</p>
               )}
               <button
                 type="submit"
                 disabled={checking}
-                className="w-full px-4 py-2 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50"
+                className="w-full px-4 py-2 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50"
               >
                 {checking ? 'Checking...' : 'Enter →'}
               </button>
@@ -104,7 +104,7 @@ function AdminUI({ password, onLogout }: { password: string; onLogout: () => voi
     <div className="min-h-screen bg-[#f0ebe0]">
       <Header
         badge={
-          <span className="text-[#c0492b] font-bold text-xs tracking-[0.2em] uppercase border border-[#c0492b] px-2 py-0.5">
+          <span className="text-[#b85476] font-bold text-xs tracking-[0.2em] uppercase border border-[#b85476] px-2 py-0.5">
             Admin
           </span>
         }
@@ -201,7 +201,7 @@ function GenerateTab({ password }: { password: string }) {
 
   return (
     <div>
-      <div className="bg-[#6b7c52] px-4 py-3 border-2 border-[#2b2b2b] mb-6">
+      <div className="bg-[#7a5a90] px-4 py-3 border-2 border-[#2b2b2b] mb-6">
         <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
           Generate a New Recipe
         </span>
@@ -213,25 +213,25 @@ function GenerateTab({ password }: { password: string }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="e.g. Chicken stir fry, Beef tacos, Veggie pasta..."
-          className="flex-1 border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#c0492b]"
+          className="flex-1 border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#b85476]"
         />
         <button
           type="submit"
           disabled={generating || !query.trim()}
-          className="px-5 py-2 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="px-5 py-2 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {generating ? 'Generating...' : 'Generate →'}
         </button>
       </form>
 
       {genError && (
-        <div className="border-2 border-[#c0492b] p-4 mb-6 text-sm text-[#c0492b] font-bold">
+        <div className="border-2 border-[#b85476] p-4 mb-6 text-sm text-[#b85476] font-bold">
           {genError}
         </div>
       )}
 
       {saveMsg && (
-        <div className="border-2 border-[#6b7c52] bg-[#6b7c52]/10 p-4 mb-6 text-sm text-[#6b7c52] font-bold">
+        <div className="border-2 border-[#7a5a90] bg-[#7a5a90]/10 p-4 mb-6 text-sm text-[#7a5a90] font-bold">
           {saveMsg}
         </div>
       )}
@@ -252,9 +252,9 @@ function GenerateTab({ password }: { password: string }) {
           </div>
           <p className="text-sm text-[#2b2b2b]/60 mb-4">{preview.description}</p>
 
-          <div className="h-px bg-[#c0492b] mb-4" />
+          <div className="h-px bg-[#b85476] mb-4" />
 
-          <div className="bg-[#6b7c52] px-3 py-2 border-2 border-[#2b2b2b] mb-3">
+          <div className="bg-[#7a5a90] px-3 py-2 border-2 border-[#2b2b2b] mb-3">
             <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-xs">
               Instructions
             </span>
@@ -263,7 +263,7 @@ function GenerateTab({ password }: { password: string }) {
           <div className="space-y-3">
             {preview.steps.map((step, i) => (
               <div key={i} className="border border-[#2b2b2b] p-4">
-                <div className="bg-[#6b7c52] p-2 mb-3">
+                <div className="bg-[#7a5a90] p-2 mb-3">
                   <p className="text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-xs mb-1.5">
                     Ingredients:
                   </p>
@@ -276,7 +276,7 @@ function GenerateTab({ password }: { password: string }) {
                   </div>
                 </div>
                 <p className="text-sm text-[#2b2b2b] leading-relaxed">
-                  <span className="text-[#c0492b] font-bold mr-2">{i + 1}.</span>
+                  <span className="text-[#b85476] font-bold mr-2">{i + 1}.</span>
                   {step.instruction}
                 </p>
               </div>
@@ -287,7 +287,7 @@ function GenerateTab({ password }: { password: string }) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2 bg-[#6b7c52] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50"
+              className="px-6 py-2 bg-[#7a5a90] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save to Menu →'}
             </button>
@@ -352,14 +352,14 @@ function ManageTab({ password }: { password: string }) {
 
   return (
     <div>
-      <div className="bg-[#6b7c52] px-4 py-3 border-2 border-[#2b2b2b] mb-6">
+      <div className="bg-[#7a5a90] px-4 py-3 border-2 border-[#2b2b2b] mb-6">
         <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
           All Recipes ({staticMeals.length + customMeals.length})
         </span>
       </div>
 
       {error && (
-        <div className="border-2 border-[#c0492b] p-3 mb-4 text-xs text-[#c0492b] font-bold">
+        <div className="border-2 border-[#b85476] p-3 mb-4 text-xs text-[#b85476] font-bold">
           {error}
         </div>
       )}
@@ -399,7 +399,7 @@ function ManageTab({ password }: { password: string }) {
                 <span className="text-sm font-bold uppercase tracking-[0.1em] text-[#2b2b2b] truncate block">
                   {meal.title}
                 </span>
-                <span className="text-xs text-[#6b7c52] font-bold uppercase tracking-[0.1em]">
+                <span className="text-xs text-[#7a5a90] font-bold uppercase tracking-[0.1em]">
                   AI Generated
                 </span>
               </div>
@@ -407,7 +407,7 @@ function ManageTab({ password }: { password: string }) {
             <button
               onClick={() => handleDelete(meal.id, meal.title)}
               disabled={deletingId === meal.id}
-              className="px-3 py-1.5 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-xs border-2 border-[#2b2b2b] shadow-[2px_2px_0px_#2b2b2b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50 flex-shrink-0"
+              className="px-3 py-1.5 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-xs border-2 border-[#2b2b2b] shadow-[2px_2px_0px_#2b2b2b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50 flex-shrink-0"
             >
               {deletingId === meal.id ? '...' : 'Remove'}
             </button>

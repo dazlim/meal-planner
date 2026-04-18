@@ -47,7 +47,7 @@ function MealDetail({
       <main className="max-w-3xl mx-auto px-4 py-6">
         <Link
           href="/menu"
-          className="inline-block px-4 py-2 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 mb-6"
+          className="inline-block px-4 py-2 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 mb-6"
         >
           ← Back
         </Link>
@@ -76,7 +76,7 @@ function MealDetail({
           </div>
         )}
 
-        <div className="h-1 bg-[#c0492b] mb-6" />
+        <div className="h-1 bg-[#b85476] mb-6" />
 
         <MealDetailView meal={meal} initialView={initialView} />
       </main>

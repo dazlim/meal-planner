@@ -101,8 +101,8 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
           onClick={() => setActiveTab('shopping')}
           className={`flex-1 py-3 text-xs font-bold uppercase tracking-[0.15em] transition-colors border-l-2 border-[#2b2b2b] ${
             activeTab === 'shopping'
-              ? 'bg-[#c0492b] text-[#f0ebe0]'
-              : 'bg-[#f0ebe0] text-[#2b2b2b] hover:bg-[#c0492b]/10'
+              ? 'bg-[#b85476] text-[#f0ebe0]'
+              : 'bg-[#f0ebe0] text-[#2b2b2b] hover:bg-[#b85476]/10'
           }`}
         >
           🛒 Shopping List
@@ -135,8 +135,8 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
                     onClick={() => setActiveMethod(alt.method)}
                     className={`px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] border-2 transition-colors ${
                       activeMethod === alt.method
-                        ? 'bg-[#c0492b] text-[#f0ebe0] border-[#c0492b]'
-                        : 'bg-[#f0ebe0] text-[#2b2b2b] border-[#2b2b2b] hover:bg-[#c0492b]/10'
+                        ? 'bg-[#b85476] text-[#f0ebe0] border-[#b85476]'
+                        : 'bg-[#f0ebe0] text-[#2b2b2b] border-[#2b2b2b] hover:bg-[#b85476]/10'
                     }`}
                   >
                     {alt.icon} {alt.label}
@@ -144,14 +144,14 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
                 ))}
               </div>
               {selectedAlt?.note && (
-                <p className="mt-3 text-xs text-[#6b7c52] leading-snug">
+                <p className="mt-3 text-xs text-[#7a5a90] leading-snug">
                   ℹ️ {selectedAlt.note}
                 </p>
               )}
             </div>
           )}
 
-          <div className="bg-[#6b7c52] px-4 py-3 border-2 border-[#2b2b2b]">
+          <div className="bg-[#7a5a90] px-4 py-3 border-2 border-[#2b2b2b]">
             <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
               {selectedAlt ? `${selectedAlt.label} Instructions` : 'Instructions'}
             </span>
@@ -163,7 +163,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
               className="border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] bg-[#f0ebe0] p-5"
             >
               {step.ingredients.length > 0 && (
-                <div className="bg-[#6b7c52] p-3 mb-4">
+                <div className="bg-[#7a5a90] p-3 mb-4">
                   <p className="text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-xs mb-2">
                     Ingredients:
                   </p>
@@ -180,7 +180,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
                 </div>
               )}
               <p className="text-[#2b2b2b] text-sm leading-relaxed">
-                <span className="text-[#c0492b] font-bold mr-2">{index + 1}.</span>
+                <span className="text-[#b85476] font-bold mr-2">{index + 1}.</span>
                 {step.instruction}
               </p>
             </div>
@@ -191,7 +191,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
       {/* ── SHOPPING TAB ── */}
       {activeTab === 'shopping' && (
         <div>
-          <div className="bg-[#c0492b] px-4 py-3 border-2 border-[#2b2b2b] mb-4">
+          <div className="bg-[#b85476] px-4 py-3 border-2 border-[#2b2b2b] mb-4">
             <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
               Shopping List — Serves 4
             </span>
@@ -217,7 +217,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => toggleChecked(ingredient)}
-                      className="mt-1 w-4 h-4 accent-[#c0492b] flex-shrink-0 cursor-pointer"
+                      className="mt-1 w-4 h-4 accent-[#b85476] flex-shrink-0 cursor-pointer"
                     />
                     <div className="flex-1 min-w-0">
                       <span
@@ -229,7 +229,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
                       </span>
                       {hint && !isChecked && (
                         <div className="mt-2 space-y-1">
-                          <p className="text-xs text-[#6b7c52] leading-snug">
+                          <p className="text-xs text-[#7a5a90] leading-snug">
                             📦 {hint.packageHint}
                           </p>
                           {crossMealTitles.length > 0 && (
@@ -249,7 +249,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
             })}
           </div>
 
-          <div className="border-2 border-[#2b2b2b] bg-[#6b7c52] p-4">
+          <div className="border-2 border-[#2b2b2b] bg-[#7a5a90] p-4">
             <p className="text-[#f0ebe0] text-xs font-bold uppercase tracking-[0.1em]">
               {checked.size === 0
                 ? 'Tap each item as you add it to your trolley.'
@@ -265,10 +265,10 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
       <div className="mt-8" ref={chatRef}>
         <button
           onClick={() => setChatOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-5 py-4 bg-[#2b2b2b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#c0492b] hover:shadow-[2px_2px_0px_#c0492b] hover:translate-x-[2px] hover:translate-y-[2px] transition-all duration-100"
+          className="w-full flex items-center justify-between px-5 py-4 bg-[#2b2b2b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#b85476] hover:shadow-[2px_2px_0px_#b85476] hover:translate-x-[2px] hover:translate-y-[2px] transition-all duration-100"
         >
           <span>💬 Ask the Chef</span>
-          <span className="text-[#c0492b]">{chatOpen ? '▲' : '▼'}</span>
+          <span className="text-[#b85476]">{chatOpen ? '▲' : '▼'}</span>
         </button>
 
         {chatOpen && (
@@ -291,7 +291,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
                     className={`max-w-[85%] px-4 py-3 text-sm leading-relaxed ${
                       msg.role === 'user'
                         ? 'bg-[#2b2b2b] text-[#f0ebe0]'
-                        : 'bg-[#6b7c52] text-[#f0ebe0]'
+                        : 'bg-[#7a5a90] text-[#f0ebe0]'
                     }`}
                   >
                     {msg.content}
@@ -301,7 +301,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
 
               {loading && (
                 <div className="flex justify-start">
-                  <div className="bg-[#6b7c52] px-4 py-3">
+                  <div className="bg-[#7a5a90] px-4 py-3">
                     <span className="flex gap-1 items-center">
                       <span className="w-2 h-2 bg-[#f0ebe0] rounded-full animate-bounce [animation-delay:0ms]" />
                       <span className="w-2 h-2 bg-[#f0ebe0] rounded-full animate-bounce [animation-delay:150ms]" />
@@ -327,7 +327,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
-                className="px-5 py-3 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.1em] text-xs border-l-2 border-[#2b2b2b] disabled:opacity-40 hover:bg-[#a03a22] transition-colors"
+                className="px-5 py-3 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.1em] text-xs border-l-2 border-[#2b2b2b] disabled:opacity-40 hover:bg-[#943058] transition-colors"
               >
                 Send
               </button>

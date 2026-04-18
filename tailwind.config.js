@@ -12,8 +12,8 @@ module.exports = {
       colors: {
         'cream': '#f0ebe0',
         'dark': '#2b2b2b',
-        'rust': '#c0492b',
-        'olive': '#6b7c52',
+        'rose': '#b85476',
+        'plum': '#7a5a90',
       },
       boxShadow: {
         'card': '4px 4px 0px #2b2b2b',
