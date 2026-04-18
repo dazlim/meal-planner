@@ -15,13 +15,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No message provided.' }, { status: 400 })
   }
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-  const stepSummary = meal.steps
-    .map((s: { instruction: string }, i: number) => `${i + 1}. ${s.instruction}`)
-    .join(' ')
+    const stepSummary = meal.steps
+      .map((s: { instruction: string }, i: number) => `${i + 1}. ${s.instruction}`)
+      .join(' ')
 
-  const systemPrompt = `You are a friendly home cooking assistant helping a family cook dinner tonight. Keep your answers brief, warm and practical — 2 to 4 sentences unless the question genuinely needs more detail.
+    const systemPrompt = `You are a friendly home cooking assistant helping a family cook dinner tonight. Keep your answers brief, warm and practical — 2 to 4 sentences unless the question genuinely needs more detail.
 
 Current recipe: ${meal.title}
 Serves: 4
@@ -40,18 +41,26 @@ You can help with:
 
 Keep it family-friendly, encouraging and concise.`
 
-  const completion = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...history,
-      { role: 'user', content: userMessage },
-    ],
-    max_tokens: 350,
-    temperature: 0.7,
-  })
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...history,
+        { role: 'user', content: userMessage },
+      ],
+      max_tokens: 350,
+      temperature: 0.7,
+    })
 
-  const message = completion.choices[0]?.message?.content ?? 'No response received.'
+    const message = completion.choices[0]?.message?.content ?? 'No response received.'
 
-  return NextResponse.json({ message })
+    return NextResponse.json({ message })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    console.error('[recipe-chat]', message)
+    return NextResponse.json(
+      { error: `Could not reach the chef right now — ${message}` },
+      { status: 500 }
+    )
+  }
 }
