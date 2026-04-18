@@ -1,18 +1,36 @@
-import { meals } from '@/data/meals'
+import { meals as staticMeals } from '@/data/meals'
+import { getCustomMeals } from '@/lib/recipes-db'
+import type { CustomMeal } from '@/lib/recipes-db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-export async function generateStaticParams() {
-  return meals.map((meal) => ({ id: meal.id }))
+export const dynamic = 'force-dynamic'
+
+type AnyMeal = {
+  id: string
+  title: string
+  emoji: string
+  description?: string
+  ingredients: string[]
+  steps: { ingredients: string[]; instruction: string }[]
 }
 
-export default function MealPage({ params }: { params: { id: string } }) {
-  const meal = meals.find((m) => m.id === params.id)
+export default async function MealPage({ params }: { params: { id: string } }) {
+  const staticMeal = staticMeals.find((m) => m.id === params.id)
 
-  if (!meal) {
-    notFound()
+  if (staticMeal) {
+    return <MealDetail meal={staticMeal} />
   }
 
+  const customMeals = await getCustomMeals()
+  const customMeal = customMeals.find((m: CustomMeal) => m.id === params.id)
+
+  if (!customMeal) notFound()
+
+  return <MealDetail meal={customMeal} />
+}
+
+function MealDetail({ meal }: { meal: AnyMeal }) {
   return (
     <div className="min-h-screen bg-[#f0ebe0]">
       <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b]">
