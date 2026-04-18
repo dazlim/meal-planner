@@ -1,5 +1,4 @@
 import { meals } from '@/data/meals'
-import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -9,77 +8,69 @@ export async function generateStaticParams() {
 
 export default function MealPage({ params }: { params: { id: string } }) {
   const meal = meals.find((m) => m.id === params.id)
-  
+
   if (!meal) {
     notFound()
   }
-  
+
   return (
-    <main className="min-h-screen bg-white">
-      {/* Back Navigation */}
-      <nav className="sticky top-0 bg-white/90 backdrop-blur-sm z-10 px-4 py-3 border-b border-gray-100">
-        <Link 
-          href="/menu" 
-          className="inline-flex items-center gap-2 text-fun-pink hover:text-fun-orange transition-colors font-medium"
+    <div className="min-h-screen bg-[#f0ebe0]">
+      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b]">
+        <h1 className="text-white font-bold text-lg tracking-[0.2em] uppercase">
+          Dinner Menu
+        </h1>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-6">
+        <Link
+          href="/menu"
+          className="inline-block px-4 py-2 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 mb-6"
         >
-          <span className="text-xl">←</span>
-          <span>Back to menu</span>
+          ← Back
         </Link>
-      </nav>
 
-      <div className="max-w-2xl mx-auto px-4 pb-12">
-        {/* Hero Image */}
-        <div className="relative w-full h-64 md:h-80 rounded-2xl overflow-hidden shadow-lg mt-4">
-          <Image
-            src={`/images/${meal.image}`}
-            alt={meal.title}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
-
-        {/* Title & Description */}
-        <div className="mt-6 text-center">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800 flex items-center justify-center gap-2">
-            <span className="text-4xl">{meal.emoji}</span>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-4xl">{meal.emoji}</span>
+          <h2 className="text-xl md:text-3xl font-bold uppercase tracking-[0.1em] text-[#2b2b2b]">
             {meal.title}
-          </h1>
-          <p className="mt-2 text-lg text-gray-600">{meal.description}</p>
+          </h2>
         </div>
 
-        {/* Ingredients Section */}
-        <section className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Ingredients</h2>
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Available at Aldi
-            </span>
-          </div>
-          
-          <ul className="space-y-2">
-            {meal.ingredients.map((ingredient, index) => (
-              <li 
-                key={index}
-                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-xl text-fun-pink">☐</span>
-                <span className="text-gray-700">{ingredient}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div className="h-1 bg-[#c0492b] mb-6" />
 
-        {/* Fun Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-gray-500 text-sm">
-            🛒 All ingredients can be found at your local Aldi!
-          </p>
+        <div className="bg-[#6b7c52] px-4 py-3 border-2 border-[#2b2b2b] mb-4">
+          <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
+            Instructions
+          </span>
         </div>
-      </div>
-    </main>
+
+        <div className="space-y-4">
+          {meal.steps.map((step, index) => (
+            <div key={index} className="border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] bg-[#f0ebe0] p-5">
+              <div className="bg-[#6b7c52] p-3 mb-4">
+                <p className="text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-xs mb-2">
+                  Ingredients:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {step.ingredients.map((ing, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 bg-[#f0ebe0] text-[#2b2b2b] border border-[#2b2b2b] text-xs font-bold"
+                    >
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-[#2b2b2b] text-sm leading-relaxed">
+                <span className="text-[#c0492b] font-bold mr-2">{index + 1}.</span>
+                {step.instruction}
+              </p>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
   )
 }

@@ -1,16 +1,16 @@
 import type { Metadata } from 'next'
-import { Nunito } from 'next/font/google'
+import { Space_Mono } from 'next/font/google'
 import './globals.css'
 
-const nunito = Nunito({ 
+const spaceMono = Space_Mono({
   subsets: ['latin'],
-  weight: ['400', '600', '700', '800'],
-  variable: '--font-display',
+  weight: ['400', '700'],
+  variable: '--font-mono',
 })
 
 export const metadata: Metadata = {
-  title: "What's for Dinner? 🍽️",
-  description: 'A fun visual menu for toddlers to help choose family dinners',
+  title: 'Dinner Menu',
+  description: 'A fun dinner menu for the family',
 }
 
 export default function RootLayout({
@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={nunito.variable}>
+    <html lang="en" className={spaceMono.variable}>
       <body>{children}</body>
     </html>
   )

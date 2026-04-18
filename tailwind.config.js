@@ -7,18 +7,18 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'display': ['var(--font-display)', 'system-ui', 'sans-serif'],
+        'mono': ['var(--font-mono)', 'Courier New', 'monospace'],
       },
       colors: {
-        'fun': {
-          'pink': '#FF6B9D',
-          'orange': '#FF9F43',
-          'yellow': '#FECA57',
-          'green': '#5AD45B',
-          'blue': '#45AAF2',
-          'purple': '#A55EEA',
-        }
-      }
+        'cream': '#f0ebe0',
+        'dark': '#2b2b2b',
+        'rust': '#c0492b',
+        'olive': '#6b7c52',
+      },
+      boxShadow: {
+        'card': '4px 4px 0px #2b2b2b',
+        'card-sm': '2px 2px 0px #2b2b2b',
+      },
     },
   },
   plugins: [],

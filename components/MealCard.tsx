@@ -1,54 +1,23 @@
-'use client'
-
-import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
-
-interface Meal {
-  id: string
-  title: string
-  description: string
-  emoji: string
-  image: string
-  ingredients: string[]
-}
 
 interface MealCardProps {
-  meal: Meal
+  meal: {
+    id: string
+    title: string
+    emoji: string
+  }
 }
 
 export default function MealCard({ meal }: MealCardProps) {
-  const [imageError, setImageError] = useState(false)
-
   return (
-    <Link 
+    <Link
       href={`/meal/${meal.id}`}
-      className="meal-card block hover:scale-105 hover:shadow-lg transition-all duration-200"
+      className="flex items-center gap-4 bg-[#f0ebe0] border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] p-5 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#2b2b2b] transition-all duration-100"
     >
-      {/* Image */}
-      <div className="relative h-40 bg-gradient-to-br from-fun-yellow/20 to-fun-orange/20">
-        {meal.image && !imageError ? (
-          <Image
-            src={`/images/${meal.image}`}
-            alt={meal.title}
-            fill
-            className="object-cover"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-6xl">
-            {meal.emoji}
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="p-3">
-        <h3 className="meal-card-title flex items-center gap-1">
-          <span className="text-xl">{meal.emoji}</span>
-          <span className="text-sm leading-tight">{meal.title}</span>
-        </h3>
-      </div>
+      <span className="text-2xl flex-shrink-0">{meal.emoji}</span>
+      <span className="text-[#2b2b2b] font-bold uppercase tracking-[0.15em] text-sm">
+        {meal.title}
+      </span>
     </Link>
   )
 }

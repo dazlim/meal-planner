@@ -3,40 +3,39 @@ import Image from 'next/image'
 
 export default function CoverPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      {/* Cover Image */}
-      <div className="relative w-full max-w-md h-64 md:h-80 mb-8 rounded-2xl overflow-hidden shadow-xl">
-        <Image
-          src="/images/kids-dinner-menu_b35b1ab6.png"
-          alt="Kids Dinner Menu"
-          fill
-          className="object-cover"
-          priority
-        />
-      </div>
+    <div className="min-h-screen bg-[#f0ebe0]">
+      <header className="bg-[#2b2b2b] px-4 py-4 border-b-4 border-[#c0492b]">
+        <h1 className="text-white font-bold text-lg tracking-[0.2em] uppercase">
+          Dinner Menu
+        </h1>
+      </header>
 
-      {/* Title */}
-      <h1 className="text-4xl md:text-6xl font-extrabold text-center mb-4 text-transparent bg-clip-text bg-gradient-to-r from-fun-pink via-fun-orange to-fun-yellow">
-        What&apos;s for Dinner? 🍽️
-      </h1>
+      <main className="flex flex-col items-center justify-center px-6 py-16">
+        <div className="relative w-full max-w-sm h-56 md:h-72 mb-10 overflow-hidden border-4 border-[#2b2b2b] shadow-[8px_8px_0px_#2b2b2b]">
+          <Image
+            src="/images/kids-dinner-menu_b35b1ab6.png"
+            alt="Kids Dinner Menu"
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
 
-      {/* Subtitle */}
-      <p className="text-lg md:text-xl text-gray-600 text-center mb-8 max-w-md">
-        Tap to choose with your little one!
-      </p>
+        <h2 className="text-2xl md:text-4xl font-bold text-center mb-3 text-[#2b2b2b] uppercase tracking-[0.15em]">
+          What&apos;s for Dinner?
+        </h2>
 
-      {/* CTA Button */}
-      <Link
-        href="/menu"
-        className="px-8 py-4 bg-gradient-to-r from-fun-pink to-fun-orange text-white font-bold rounded-full text-xl shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-200"
-      >
-        Let&apos;s Choose! 🎉
-      </Link>
+        <p className="text-sm text-[#2b2b2b]/50 text-center mb-10 tracking-wider uppercase">
+          Pick tonight&apos;s meal
+        </p>
 
-      {/* Footer hint */}
-      <p className="mt-12 text-gray-400 text-sm text-center">
-        21 yummy meals to explore ✨
-      </p>
-    </main>
+        <Link
+          href="/menu"
+          className="px-8 py-3 bg-[#c0492b] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#2b2b2b] transition-all duration-100"
+        >
+          See the Menu →
+        </Link>
+      </main>
+    </div>
   )
 }
