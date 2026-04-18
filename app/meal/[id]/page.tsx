@@ -2,6 +2,7 @@ import { meals as staticMeals } from '@/data/meals'
 import { getCustomMeals } from '@/lib/recipes-db'
 import type { CustomMeal } from '@/lib/recipes-db'
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
 import MealDetailView from '@/components/MealDetailView'
@@ -60,6 +61,18 @@ function MealDetail({
 
         {meal.description && (
           <p className="text-sm text-[#2b2b2b]/60 mb-4 tracking-wide">{meal.description}</p>
+        )}
+
+        {meal.image && (
+          <div className="relative w-full h-48 md:h-64 mb-4 overflow-hidden border-2 border-[#2b2b2b] shadow-[6px_6px_0px_#2b2b2b]">
+            <Image
+              src={`/images/${meal.image}`}
+              alt={meal.title}
+              fill
+              className="object-cover object-center"
+              priority
+            />
+          </div>
         )}
 
         <div className="h-1 bg-[#c0492b] mb-6" />
