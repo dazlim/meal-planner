@@ -64,12 +64,13 @@ function MealDetail({
         )}
 
         {meal.image && (
-          <div className="relative w-full h-48 md:h-64 mb-4 overflow-hidden border-2 border-[#2b2b2b] shadow-[6px_6px_0px_#2b2b2b]">
+          <div className="mb-4 border-2 border-[#2b2b2b] shadow-[6px_6px_0px_#2b2b2b] overflow-hidden">
             <Image
               src={`/images/${meal.image}`}
               alt={meal.title}
-              fill
-              className="object-cover object-center"
+              width={800}
+              height={500}
+              className="w-full h-auto block"
               priority
             />
           </div>
