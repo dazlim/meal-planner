@@ -4,23 +4,24 @@ import type { CustomMeal } from '@/lib/recipes-db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
+import MealDetailView from '@/components/MealDetailView'
+import type { AnyMeal } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
-type AnyMeal = {
-  id: string
-  title: string
-  emoji: string
-  description?: string
-  ingredients: string[]
-  steps: { ingredients: string[]; instruction: string }[]
-}
+export default async function MealPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string }
+  searchParams: { view?: string }
+}) {
+  const initialView = searchParams.view === 'shopping' ? 'shopping' : 'instructions'
 
-export default async function MealPage({ params }: { params: { id: string } }) {
   const staticMeal = staticMeals.find((m) => m.id === params.id)
 
   if (staticMeal) {
-    return <MealDetail meal={staticMeal} />
+    return <MealDetail meal={staticMeal} initialView={initialView} />
   }
 
   const customMeals = await getCustomMeals()
@@ -28,10 +29,16 @@ export default async function MealPage({ params }: { params: { id: string } }) {
 
   if (!customMeal) notFound()
 
-  return <MealDetail meal={customMeal} />
+  return <MealDetail meal={customMeal} initialView={initialView} />
 }
 
-function MealDetail({ meal }: { meal: AnyMeal }) {
+function MealDetail({
+  meal,
+  initialView,
+}: {
+  meal: AnyMeal
+  initialView: 'instructions' | 'shopping'
+}) {
   return (
     <div className="min-h-screen bg-[#f0ebe0]">
       <Header />
@@ -51,40 +58,13 @@ function MealDetail({ meal }: { meal: AnyMeal }) {
           </h2>
         </div>
 
+        {meal.description && (
+          <p className="text-sm text-[#2b2b2b]/60 mb-4 tracking-wide">{meal.description}</p>
+        )}
+
         <div className="h-1 bg-[#c0492b] mb-6" />
 
-        <div className="bg-[#6b7c52] px-4 py-3 border-2 border-[#2b2b2b] mb-4">
-          <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
-            Instructions
-          </span>
-        </div>
-
-        <div className="space-y-4">
-          {meal.steps.map((step, index) => (
-            <div key={index} className="border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] bg-[#f0ebe0] p-5">
-              <div className="bg-[#6b7c52] p-3 mb-4">
-                <p className="text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-xs mb-2">
-                  Ingredients:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {step.ingredients.map((ing, i) => (
-                    <span
-                      key={i}
-                      className="px-2 py-1 bg-[#f0ebe0] text-[#2b2b2b] border border-[#2b2b2b] text-xs font-bold"
-                    >
-                      {ing}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-[#2b2b2b] text-sm leading-relaxed">
-                <span className="text-[#c0492b] font-bold mr-2">{index + 1}.</span>
-                {step.instruction}
-              </p>
-            </div>
-          ))}
-        </div>
+        <MealDetailView meal={meal} initialView={initialView} />
       </main>
     </div>
   )
