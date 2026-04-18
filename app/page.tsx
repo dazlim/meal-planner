@@ -17,7 +17,7 @@ export default function CoverPage() {
 
       {/* Title */}
       <h1 className="text-4xl md:text-6xl font-extrabold text-center mb-4 text-transparent bg-clip-text bg-gradient-to-r from-fun-pink via-fun-orange to-fun-yellow">
-        What's for Dinner? 🍽️
+        What&apos;s for Dinner? 🍽️
       </h1>
 
       {/* Subtitle */}
@@ -30,7 +30,7 @@ export default function CoverPage() {
         href="/menu"
         className="px-8 py-4 bg-gradient-to-r from-fun-pink to-fun-orange text-white font-bold rounded-full text-xl shadow-lg hover:scale-105 hover:shadow-xl transition-all duration-200"
       >
-        Let's Choose! 🎉
+        Let&apos;s Choose! 🎉
       </Link>
 
       {/* Footer hint */}

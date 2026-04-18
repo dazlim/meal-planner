@@ -7,7 +7,7 @@ export default function MenuPage() {
       {/* Header */}
       <header className="text-center mb-8">
         <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-fun-pink via-fun-orange to-fun-yellow mb-2">
-          What's for Dinner? 🍽️
+          What&apos;s for Dinner? 🍽️
         </h1>
         <p className="text-gray-600 text-lg">Tap a meal to see ingredients!</p>
       </header>
