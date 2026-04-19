@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import Header from '@/components/Header'
 import { clearMealCart, getCartUpdatedEventName, getMealCart, type CartMeal } from '@/lib/meal-cart'
@@ -163,6 +164,7 @@ export default function FullShoppingListPage() {
   const [authMessage, setAuthMessage] = useState('')
   const [authBusy, setAuthBusy] = useState(false)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   const [isApproved, setIsApproved] = useState(false)
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [sharedItems, setSharedItems] = useState<SharedItemRow[]>([])
@@ -175,6 +177,7 @@ export default function FullShoppingListPage() {
       return null
     }
   }, [])
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const update = () => setCartMeals(getMealCart())
@@ -188,7 +191,9 @@ export default function FullShoppingListPage() {
       const savedSort = window.localStorage.getItem(SORT_MODE_KEY)
       if (savedSort === 'alpha' || savedSort === 'category') setSortMode(savedSort)
       const savedMode = window.localStorage.getItem(MODE_KEY)
-      if (savedMode === 'personal' || savedMode === 'shared') setListMode(savedMode)
+      const urlMode = searchParams.get('mode')
+      if (urlMode === 'personal' || urlMode === 'shared') setListMode(urlMode)
+      else if (savedMode === 'personal' || savedMode === 'shared') setListMode(savedMode)
     } catch {
       // ignore local storage parse issues
     }
@@ -201,7 +206,7 @@ export default function FullShoppingListPage() {
       window.removeEventListener(getCartUpdatedEventName(), update)
       window.removeEventListener('storage', update)
     }
-  }, [])
+  }, [searchParams])
 
   const personalItems = useMemo(() => collateIngredients(cartMeals), [cartMeals])
   const collatedShared = useMemo(() => collateFromShared(sharedItems), [sharedItems])
@@ -247,10 +252,12 @@ export default function FullShoppingListPage() {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return
       setSessionUserId(data.session?.user?.id ?? null)
+      setSessionEmail(data.session?.user?.email ?? null)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setSessionUserId(session?.user?.id ?? null)
+      setSessionEmail(session?.user?.email ?? null)
     })
 
     return () => {
@@ -391,7 +398,7 @@ export default function FullShoppingListPage() {
     if (!supabase) return
     setAuthBusy(true)
     setAuthMessage('')
-    const redirectTo = `${window.location.origin}/menu/shopping`
+    const redirectTo = `${window.location.origin}/menu/shopping?mode=shared`
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -591,6 +598,20 @@ export default function FullShoppingListPage() {
                 Supabase is not configured in this deployment (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
               </p>
             )}
+            {supabase && sessionUserId && (
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-3 pb-3 border-b border-[#2b2b2b]/20">
+                <p className="text-xs text-[#2b2b2b]/70">
+                  Signed in{sessionEmail ? ` as ${sessionEmail}` : ''}.
+                </p>
+                <button
+                  onClick={handleSignOut}
+                  disabled={authBusy}
+                  className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
             {supabase && !sessionUserId && (
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <p className="text-xs text-[#2b2b2b]/70">Sign in with OAuth to use the shared family checklist.</p>
@@ -622,13 +643,6 @@ export default function FullShoppingListPage() {
                   >
                     Redeem
                   </button>
-                  <button
-                    onClick={handleSignOut}
-                    disabled={authBusy}
-                    className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-                  >
-                    Sign out
-                  </button>
                 </div>
               </div>
             )}
@@ -644,13 +658,6 @@ export default function FullShoppingListPage() {
                     className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
                   >
                     Sync Personal → Shared
-                  </button>
-                  <button
-                    onClick={handleSignOut}
-                    disabled={authBusy}
-                    className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-                  >
-                    Sign out
                   </button>
                 </div>
               </div>
@@ -742,4 +749,3 @@ export default function FullShoppingListPage() {
     </div>
   )
 }
-

@@ -14,6 +14,7 @@ This folder contains the first-pass schema and RLS policies for turning the app 
 Run the SQL in:
 
 - `supabase/migrations/20260419_invite_gated_multi_family.sql`
+- `supabase/migrations/20260419_meal_plans.sql`
 
 Use Supabase SQL Editor or your migration tooling.
 
@@ -32,5 +33,5 @@ Use Supabase SQL Editor or your migration tooling.
   - family-bound codes (`family_id` set)
   - bootstrap codes (`family_id` null -> creates a new family on redeem)
 - `shopping_items` are shared, with `checked_by` and `checked_at` for collaboration.
+- `meal_plans` + `meal_plan_items` store reusable named dinner rotations per family.
 - `assert_ai_quota(...)` provides a DB-side guard before chat/generation calls.
-
