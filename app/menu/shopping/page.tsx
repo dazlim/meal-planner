@@ -161,6 +161,7 @@ export default function FullShoppingListPage() {
 
   const [inviteCode, setInviteCode] = useState('')
   const [authMessage, setAuthMessage] = useState('')
+  const [authMessageKind, setAuthMessageKind] = useState<'error' | 'success'>('error')
   const [authBusy, setAuthBusy] = useState(false)
   const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
@@ -304,14 +305,15 @@ export default function FullShoppingListPage() {
     })
   }, [sessionUserId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function ensureSharedPlan(): Promise<string | null> {
-    if (!supabase || !familyId) return null
+  async function ensureSharedPlan(targetFamilyId?: string): Promise<string | null> {
+    const effectiveFamilyId = targetFamilyId ?? familyId
+    if (!supabase || !effectiveFamilyId) return null
     const weekStart = weekStartIso()
 
     const { data: existing } = await supabase
       .from('weekly_plans')
       .select('id')
-      .eq('family_id', familyId)
+      .eq('family_id', effectiveFamilyId)
       .eq('week_start', weekStart)
       .limit(1)
       .maybeSingle()
@@ -320,7 +322,7 @@ export default function FullShoppingListPage() {
 
     const { data: inserted, error } = await supabase
       .from('weekly_plans')
-      .insert({ family_id: familyId, week_start: weekStart })
+      .insert({ family_id: effectiveFamilyId, week_start: weekStart })
       .select('id')
       .single()
 
@@ -328,10 +330,11 @@ export default function FullShoppingListPage() {
     return inserted.id as string
   }
 
-  async function loadSharedItems() {
-    if (!supabase || !familyId || !isApproved) return
+  async function loadSharedItems(targetFamilyId?: string) {
+    const effectiveFamilyId = targetFamilyId ?? familyId
+    if (!supabase || !effectiveFamilyId || !isApproved) return
     setSharedBusy(true)
-    const planId = await ensureSharedPlan()
+    const planId = await ensureSharedPlan(effectiveFamilyId)
     if (!planId) {
       setSharedBusy(false)
       return
@@ -401,6 +404,7 @@ export default function FullShoppingListPage() {
       options: { redirectTo },
     })
     if (error) {
+      setAuthMessageKind('error')
       setAuthMessage(error.message)
       setAuthBusy(false)
     }
@@ -412,6 +416,7 @@ export default function FullShoppingListPage() {
     await supabase.auth.signOut()
     setAuthBusy(false)
     setAuthMessage('')
+    setAuthMessageKind('error')
   }
 
   async function handleRedeemInvite() {
@@ -419,25 +424,42 @@ export default function FullShoppingListPage() {
     if (!inviteCode.trim()) return
     setAuthBusy(true)
     setAuthMessage('')
+    setAuthMessageKind('error')
     const { error } = await supabase.rpc('redeem_invite_code', {
       input_code: inviteCode.trim(),
       desired_family_name: 'Family',
     })
     if (error) {
+      setAuthMessageKind('error')
       setAuthMessage(error.message)
       setAuthBusy(false)
       return
     }
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const redeemedFamilyId = (await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', sessionData.session?.user?.id ?? '')
+      .limit(1)
+      .maybeSingle()).data?.family_id ?? null
+
     setInviteCode('')
+    setIsApproved(true)
+    if (redeemedFamilyId) setFamilyId(redeemedFamilyId)
     if (sessionUserId) await loadFamilyContext(sessionUserId)
-    await loadSharedItems()
+    setAuthMessageKind('success')
+    setAuthMessage('Invite redeemed. Collaboration is now active.')
+    await handleSyncPersonalToShared(redeemedFamilyId ?? undefined)
+    await loadSharedItems(redeemedFamilyId ?? undefined)
     setAuthBusy(false)
   }
 
-  async function handleSyncPersonalToShared() {
-    if (!supabase || !familyId) return
+  async function handleSyncPersonalToShared(targetFamilyId?: string) {
+    const effectiveFamilyId = targetFamilyId ?? familyId
+    if (!supabase || !effectiveFamilyId) return
     setSharedBusy(true)
-    const planId = await ensureSharedPlan()
+    const planId = await ensureSharedPlan(effectiveFamilyId)
     if (!planId) {
       setSharedBusy(false)
       return
@@ -470,7 +492,7 @@ export default function FullShoppingListPage() {
     })
 
     await supabase.from('shopping_items').upsert(payload, { onConflict: 'plan_id,ingredient_key' })
-    await loadSharedItems()
+    await loadSharedItems(effectiveFamilyId)
     setSharedBusy(false)
   }
 
@@ -650,7 +672,7 @@ export default function FullShoppingListPage() {
                 </p>
                 <div className="flex gap-2">
                   <button
-                    onClick={handleSyncPersonalToShared}
+                    onClick={() => handleSyncPersonalToShared()}
                     disabled={sharedBusy}
                     className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
                   >
@@ -659,7 +681,15 @@ export default function FullShoppingListPage() {
                 </div>
               </div>
             )}
-            {authMessage && <p className="text-xs text-[#b85476] mt-3">{authMessage}</p>}
+            {authMessage && (
+              <p
+                className={`text-xs mt-3 ${
+                  authMessageKind === 'success' ? 'text-[#3f7f53]' : 'text-[#b85476]'
+                }`}
+              >
+                {authMessage}
+              </p>
+            )}
           </div>
         )}
 
