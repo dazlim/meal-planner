@@ -64,34 +64,39 @@ export default function MealPlansPage() {
       setPlans([])
       return
     }
+    const sb = supabase
 
-    supabase
-      .from('profiles')
-      .select('approved_at')
-      .eq('user_id', sessionUserId)
-      .maybeSingle()
-      .then(({ data }) => {
-        const approved = !!data?.approved_at
+    async function loadFamilyContext() {
+      try {
+        const { data: profile } = await sb
+          .from('profiles')
+          .select('approved_at')
+          .eq('user_id', sessionUserId)
+          .maybeSingle()
+
+        const approved = !!profile?.approved_at
         setIsApproved(approved)
         if (!approved) {
           setFamilyId(null)
           setPlans([])
           return
         }
-        supabase
+
+        const { data: member } = await sb
           .from('family_members')
           .select('family_id')
           .eq('user_id', sessionUserId)
           .limit(1)
           .maybeSingle()
-          .then(({ data: member }) => {
-            setFamilyId(member?.family_id ?? null)
-          })
-      })
-      .catch(() => {
+
+        setFamilyId(member?.family_id ?? null)
+      } catch {
         setIsApproved(false)
         setFamilyId(null)
-      })
+      }
+    }
+
+    void loadFamilyContext()
   }, [supabase, sessionUserId])
 
   async function loadPlans() {
@@ -116,7 +121,7 @@ export default function MealPlansPage() {
 
   useEffect(() => {
     if (!familyId || !isApproved) return
-    loadPlans().catch(() => setMessage('Could not load meal plans.'))
+    void loadPlans()
   }, [familyId, isApproved]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSignIn() {

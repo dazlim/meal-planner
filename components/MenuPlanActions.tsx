@@ -63,33 +63,38 @@ export default function MenuPlanActions() {
       setIsApproved(false)
       return
     }
+    const sb = supabase
 
-    supabase
-      .from('profiles')
-      .select('approved_at')
-      .eq('user_id', sessionUserId)
-      .maybeSingle()
-      .then(({ data }) => {
-        const approved = !!data?.approved_at
+    async function loadFamilyContext() {
+      try {
+        const { data: profile } = await sb
+          .from('profiles')
+          .select('approved_at')
+          .eq('user_id', sessionUserId)
+          .maybeSingle()
+
+        const approved = !!profile?.approved_at
         setIsApproved(approved)
         if (!approved) {
           setFamilyId(null)
           return
         }
-        supabase
+
+        const { data: membership } = await sb
           .from('family_members')
           .select('family_id')
           .eq('user_id', sessionUserId)
           .limit(1)
           .maybeSingle()
-          .then(({ data: membership }) => {
-            setFamilyId(membership?.family_id ?? null)
-          })
-      })
-      .catch(() => {
+
+        setFamilyId(membership?.family_id ?? null)
+      } catch {
         setFamilyId(null)
         setIsApproved(false)
-      })
+      }
+    }
+
+    void loadFamilyContext()
   }, [supabase, sessionUserId])
 
   async function handleSignIn() {
