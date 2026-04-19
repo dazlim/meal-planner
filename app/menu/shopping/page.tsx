@@ -131,9 +131,9 @@ export default function FullShoppingListPage() {
       list.push(item)
       grouped.set(category, list)
     }
-    for (const [, list] of grouped) {
+    grouped.forEach((list) => {
       list.sort((a, b) => a.name.localeCompare(b.name))
-    }
+    })
     return CATEGORY_ORDER
       .map((category) => ({ category, items: grouped.get(category) ?? [] }))
       .filter((group) => group.items.length > 0)
