@@ -1,6 +1,31 @@
 -- Named meal plans per family
 -- Phase 1: persistence model for reusable dinner plans
 
+-- Safety: recreate shared helper functions if this migration is run before/without
+-- the base invite-gated migration helpers.
+create or replace function public.tg_set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create or replace function public.is_family_member(p_family_id uuid)
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.family_members fm
+    where fm.family_id = p_family_id
+      and fm.user_id = auth.uid()
+  );
+$$;
+
 create table if not exists public.meal_plans (
   id uuid primary key default gen_random_uuid(),
   family_id uuid not null references public.families(id) on delete cascade,
