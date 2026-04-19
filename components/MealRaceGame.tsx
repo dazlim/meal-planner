@@ -106,7 +106,7 @@ function tickRacers(racers: Racer[], now: number): Racer[] {
 }
 
 function computeWinner(racers: Racer[]): Racer {
-  let sim = racers.map(r => ({
+  let sim: Racer[] = racers.map(r => ({
     ...r,
     x: 0,
     status: 'racing' as RacerStatus,
