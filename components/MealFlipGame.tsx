@@ -124,38 +124,37 @@ function LilahCharacter({ state }: { state: LilaState }) {
         className={`lila-${state}`}
         aria-label="Lilah character"
       >
-        {/* Hair back */}
-        <ellipse cx="35" cy="28" rx="19" ry="22" fill="#1a0f0a" />
-        {/* Long side hair */}
-        <rect x="16" y="28" width="8" height="32" rx="4" fill="#1a0f0a" />
-        <rect x="46" y="28" width="8" height="32" rx="4" fill="#1a0f0a" />
+        {/* Long side hair strands — sit OUTSIDE face x-extent (face spans x 21–49) */}
+        <rect x="12" y="16" width="10" height="58" rx="5" fill="#1a0f0a" />
+        <rect x="48" y="16" width="10" height="58" rx="5" fill="#1a0f0a" />
+        {/* Hair top blob */}
+        <ellipse cx="35" cy="18" rx="17" ry="13" fill="#1a0f0a" />
         {/* Neck */}
-        <rect x="30" y="50" width="10" height="8" fill="#f5c4a0" />
-        {/* Body / dress */}
-        <path d="M18 58 Q35 54 52 58 L56 85 Q35 90 14 85 Z" fill="#7a5a90" />
-        {/* Dress neckline detail */}
-        <path d="M24 58 Q35 62 46 58" stroke="#f0ebe0" strokeWidth="1.5" fill="none" />
+        <rect x="29" y="43" width="12" height="10" fill="#f5c4a0" />
+        {/* Body / sweater */}
+        <path d="M16 53 Q35 48 54 53 L57 84 Q35 89 13 84 Z" fill="#7a5a90" />
+        {/* Sweater neckline */}
+        <path d="M23 55 Q35 63 47 55" stroke="#9070b0" strokeWidth="1.5" fill="none" />
         {/* Arms */}
-        <path d="M18 62 Q8 68 10 78" stroke="#7a5a90" strokeWidth="8" strokeLinecap="round" fill="none" />
-        <path d="M52 62 Q62 68 60 78" stroke="#7a5a90" strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M16 58 Q7 66 9 76" stroke="#7a5a90" strokeWidth="8" strokeLinecap="round" fill="none" />
+        <path d="M54 58 Q63 66 61 76" stroke="#7a5a90" strokeWidth="8" strokeLinecap="round" fill="none" />
         {/* Hands */}
-        <circle cx="10" cy="79" r="5" fill="#f5c4a0" />
-        <circle cx="60" cy="79" r="5" fill="#f5c4a0" />
-        {/* Face */}
-        <circle cx="35" cy="30" r="16" fill="#f5c4a0" />
-        {/* Hair top */}
-        <ellipse cx="35" cy="16" rx="16" ry="9" fill="#1a0f0a" />
-        {/* Fringe */}
-        <path d="M20 20 Q28 14 35 16 Q42 14 50 20" fill="#1a0f0a" />
+        <circle cx="9" cy="77" r="5" fill="#f5c4a0" />
+        <circle cx="61" cy="77" r="5" fill="#f5c4a0" />
+        {/* Face — oval, rendered after hair so it covers any edge overlap */}
+        <ellipse cx="35" cy="28" rx="14" ry="16" fill="#f5c4a0" />
+        {/* Fringe / bangs */}
+        <ellipse cx="35" cy="14" rx="14" ry="8" fill="#1a0f0a" />
+        <path d="M22 18 Q29 12 35 14 Q41 12 48 18" fill="#1a0f0a" />
         {/* Eyes */}
-        <circle cx="29" cy="30" r="2.5" fill="#2b2b2b" />
-        <circle cx="41" cy="30" r="2.5" fill="#2b2b2b" />
+        <circle cx="29.5" cy="27" r="2.5" fill="#2b2b2b" />
+        <circle cx="40.5" cy="27" r="2.5" fill="#2b2b2b" />
         {/* Eye shine */}
-        <circle cx="30" cy="29" r="0.8" fill="white" />
-        <circle cx="42" cy="29" r="0.8" fill="white" />
+        <circle cx="30.5" cy="26" r="0.9" fill="white" />
+        <circle cx="41.5" cy="26" r="0.9" fill="white" />
         {/* Rosy cheeks */}
-        <circle cx="24" cy="35" r="4" fill="#f0a0a0" opacity="0.45" />
-        <circle cx="46" cy="35" r="4" fill="#f0a0a0" opacity="0.45" />
+        <ellipse cx="23" cy="34" rx="4" ry="2.5" fill="#f0a0a0" opacity="0.5" />
+        <ellipse cx="47" cy="34" rx="4" ry="2.5" fill="#f0a0a0" opacity="0.5" />
         {/* Smile */}
         {state === 'sad' ? (
           <path d="M28 40 Q35 37 42 40" stroke="#2b2b2b" strokeWidth="1.5" fill="none" strokeLinecap="round" />
