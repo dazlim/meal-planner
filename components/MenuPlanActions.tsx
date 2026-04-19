@@ -157,23 +157,7 @@ export default function MenuPlanActions() {
   }
 
   if (!sessionUserId) {
-    return (
-      <div className="border-2 border-[#2b2b2b] bg-white shadow-[4px_4px_0px_#2b2b2b] px-4 py-3 mb-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <p className="text-[10px] uppercase tracking-[0.12em] text-[#2b2b2b]/65">
-            Login to save named meal plans for shared family use.
-          </p>
-          <button
-            onClick={handleSignIn}
-            disabled={busy}
-            className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-          >
-            Login
-          </button>
-        </div>
-        {message && <p className="text-xs text-[#b85476] mt-2">{message}</p>}
-      </div>
-    )
+    return null
   }
 
   if (!isApproved || !familyId) {
