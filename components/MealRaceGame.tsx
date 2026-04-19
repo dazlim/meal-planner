@@ -27,6 +27,7 @@ interface TrackObstacle {
 }
 
 interface RaceSnapshot {
+  difficulty: Difficulty
   playerX: number
   playerProgress: number
   playerSlowUntil: number
@@ -41,17 +42,93 @@ interface RaceWinner {
   meal: Meal | null
 }
 
+type Difficulty = 'slow' | 'medium' | 'fast'
 type Phase = 'welcome' | 'ready' | 'racing' | 'result' | 'done'
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 const NUM_MEAL_RACERS = 4
 const RACE_LENGTH = 100
 const TICK_MS = 50
-const PLAYER_BASE_SPEED = 5.2
-const PLAYER_HIT_SLOW_MS = 900
-const PLAYER_HIT_MULTIPLIER = 0.42
-const OPPONENT_EVENT_MIN_MS = 850
-const OPPONENT_EVENT_MAX_MS = 1650
+const DIFFICULTY_CONFIG: Record<
+  Difficulty,
+  {
+    label: string
+    playerBaseSpeed: number
+    playerBoostMax: number
+    steerGain: number
+    steerDecay: number
+    playerHitSlowMs: number
+    playerHitMultiplier: number
+    opponentSpeedMin: number
+    opponentSpeedMax: number
+    opponentSlowChance: number
+    opponentEventMinMs: number
+    opponentEventMaxMs: number
+    opponentSlowMinMs: number
+    opponentSlowMaxMs: number
+    obstacleCount: number
+    collisionWidth: number
+    scrollScale: number
+  }
+> = {
+  slow: {
+    label: 'Slow',
+    playerBaseSpeed: 4.2,
+    playerBoostMax: 1.6,
+    steerGain: 8.2,
+    steerDecay: 1.3,
+    playerHitSlowMs: 700,
+    playerHitMultiplier: 0.58,
+    opponentSpeedMin: 3.8,
+    opponentSpeedMax: 4.9,
+    opponentSlowChance: 0.3,
+    opponentEventMinMs: 1100,
+    opponentEventMaxMs: 1900,
+    opponentSlowMinMs: 550,
+    opponentSlowMaxMs: 950,
+    obstacleCount: 9,
+    collisionWidth: 0.1,
+    scrollScale: 1.95,
+  },
+  medium: {
+    label: 'Medium',
+    playerBaseSpeed: 5.2,
+    playerBoostMax: 2.4,
+    steerGain: 7,
+    steerDecay: 1.8,
+    playerHitSlowMs: 900,
+    playerHitMultiplier: 0.42,
+    opponentSpeedMin: 4.6,
+    opponentSpeedMax: 5.9,
+    opponentSlowChance: 0.34,
+    opponentEventMinMs: 850,
+    opponentEventMaxMs: 1650,
+    opponentSlowMinMs: 650,
+    opponentSlowMaxMs: 1100,
+    obstacleCount: 12,
+    collisionWidth: 0.12,
+    scrollScale: 2.15,
+  },
+  fast: {
+    label: 'Fast',
+    playerBaseSpeed: 5.9,
+    playerBoostMax: 3,
+    steerGain: 6.2,
+    steerDecay: 2.2,
+    playerHitSlowMs: 1200,
+    playerHitMultiplier: 0.35,
+    opponentSpeedMin: 5.3,
+    opponentSpeedMax: 6.9,
+    opponentSlowChance: 0.38,
+    opponentEventMinMs: 680,
+    opponentEventMaxMs: 1250,
+    opponentSlowMinMs: 750,
+    opponentSlowMaxMs: 1350,
+    obstacleCount: 14,
+    collisionWidth: 0.13,
+    scrollScale: 2.35,
+  },
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -75,22 +152,23 @@ function laneXs(count: number): number[] {
   return shuffle(base).slice(0, count)
 }
 
-function buildOpponents(pool: Meal[]): Opponent[] {
+function buildOpponents(pool: Meal[], difficulty: Difficulty): Opponent[] {
+  const cfg = DIFFICULTY_CONFIG[difficulty]
   const chosen = shuffle(pool).slice(0, NUM_MEAL_RACERS)
   const lanes = laneXs(chosen.length)
   return chosen.map((meal, i) => ({
     id: meal.id,
     meal,
     progress: 0,
-    speed: randomBetween(4.6, 5.9),
+    speed: randomBetween(cfg.opponentSpeedMin, cfg.opponentSpeedMax),
     laneX: lanes[i] ?? randomBetween(0.14, 0.86),
     slowUntil: 0,
-    nextEventAt: Date.now() + randomBetween(OPPONENT_EVENT_MIN_MS, OPPONENT_EVENT_MAX_MS),
+    nextEventAt: Date.now() + randomBetween(cfg.opponentEventMinMs, cfg.opponentEventMaxMs),
   }))
 }
 
-function buildObstacles(): TrackObstacle[] {
-  const count = 12
+function buildObstacles(difficulty: Difficulty): TrackObstacle[] {
+  const count = DIFFICULTY_CONFIG[difficulty].obstacleCount
   const spacing = (RACE_LENGTH - 16) / count
   const obstacles: TrackObstacle[] = []
   for (let i = 0; i < count; i++) {
@@ -104,14 +182,15 @@ function buildObstacles(): TrackObstacle[] {
   return obstacles
 }
 
-function buildRace(pool: Meal[]): RaceSnapshot {
+function buildRace(pool: Meal[], difficulty: Difficulty): RaceSnapshot {
   return {
+    difficulty,
     playerX: 0.5,
     playerProgress: 0,
     playerSlowUntil: 0,
     steerEnergy: 0,
-    opponents: buildOpponents(pool),
-    obstacles: buildObstacles(),
+    opponents: buildOpponents(pool, difficulty),
+    obstacles: buildObstacles(difficulty),
   }
 }
 
@@ -134,9 +213,10 @@ function resolveWinner(playerProgress: number, opponents: Opponent[]): RaceWinne
   return { id: bestOpponent.id, isLilah: false, meal: bestOpponent.meal }
 }
 
-function simulateRace(pool: Meal[]) {
-  const opponents = buildOpponents(pool)
-  const lilahScore = randomBetween(4.9, 6.5) + randomBetween(0, 1.3)
+function simulateRace(pool: Meal[], difficulty: Difficulty) {
+  const cfg = DIFFICULTY_CONFIG[difficulty]
+  const opponents = buildOpponents(pool, difficulty)
+  const lilahScore = randomBetween(cfg.playerBaseSpeed, cfg.playerBaseSpeed + cfg.playerBoostMax) + randomBetween(0, 1.3)
 
   const bestOpponent = opponents.reduce<Opponent | null>((best, o) => {
     const score = o.speed + randomBetween(0, 1.5)
@@ -284,6 +364,7 @@ function DoneScreen({ picks, onPlayAgain }: { picks: Meal[]; onPlayAgain: () => 
 
 export default function MealRaceGame() {
   const [phase, setPhase] = useState<Phase>('welcome')
+  const [difficulty, setDifficulty] = useState<Difficulty>('slow')
   const [winner, setWinner] = useState<RaceWinner | null>(null)
   const [assignedMeal, setAssignedMeal] = useState<Meal | null>(null)
   const [picks, setPicks] = useState<Meal[]>([])
@@ -311,19 +392,25 @@ export default function MealRaceGame() {
     setObstacles(next.obstacles)
   }
 
-  function initRace(pool: Meal[]) {
-    const next = buildRace(pool)
+  function initRace(pool: Meal[], nextDifficulty: Difficulty = difficulty) {
+    const next = buildRace(pool, nextDifficulty)
     syncRaceState(next)
     setWinner(null)
     setAssignedMeal(null)
+    setDifficulty(nextDifficulty)
     setPhase('ready')
   }
 
   function startGame() {
     const pool = staticMeals as Meal[]
+    setDifficulty('slow')
     setMealPool(pool)
     setPicks([])
-    initRace(pool)
+    const next = buildRace(pool, 'slow')
+    syncRaceState(next)
+    setWinner(null)
+    setAssignedMeal(null)
+    setPhase('ready')
   }
 
   function setPlayerLaneFromClientX(clientX: number) {
@@ -333,8 +420,9 @@ export default function MealRaceGame() {
 
     const rect = track.getBoundingClientRect()
     const nextX = clamp((clientX - rect.left) / rect.width, 0.08, 0.92)
+    const cfg = DIFFICULTY_CONFIG[race.difficulty]
 
-    race.steerEnergy = clamp(race.steerEnergy + Math.abs(nextX - race.playerX) * 7, 0, 2.4)
+    race.steerEnergy = clamp(race.steerEnergy + Math.abs(nextX - race.playerX) * cfg.steerGain, 0, cfg.playerBoostMax)
     race.playerX = nextX
     setPlayerX(nextX)
   }
@@ -349,12 +437,13 @@ export default function MealRaceGame() {
 
       const now = Date.now()
       const dt = TICK_MS / 1000
+      const cfg = DIFFICULTY_CONFIG[race.difficulty]
 
-      race.steerEnergy = Math.max(0, race.steerEnergy - 1.8 * dt)
+      race.steerEnergy = Math.max(0, race.steerEnergy - cfg.steerDecay * dt)
 
-      let playerSpeed = PLAYER_BASE_SPEED + Math.min(2.4, race.steerEnergy * 1.6)
+      let playerSpeed = cfg.playerBaseSpeed + Math.min(cfg.playerBoostMax, race.steerEnergy * 1.6)
       if (now < race.playerSlowUntil) {
-        playerSpeed *= PLAYER_HIT_MULTIPLIER
+        playerSpeed *= cfg.playerHitMultiplier
       }
       playerSpeed *= randomBetween(0.96, 1.04)
       race.playerProgress = Math.min(RACE_LENGTH, race.playerProgress + playerSpeed * dt)
@@ -362,9 +451,9 @@ export default function MealRaceGame() {
       race.obstacles = race.obstacles.map(obs => {
         if (obs.hit) return obs
         const reached = race.playerProgress >= obs.progress - 0.4 && race.playerProgress <= obs.progress + 0.65
-        const collided = Math.abs(race.playerX - obs.laneX) < 0.12
+        const collided = Math.abs(race.playerX - obs.laneX) < cfg.collisionWidth
         if (reached && collided) {
-          race.playerSlowUntil = now + PLAYER_HIT_SLOW_MS
+          race.playerSlowUntil = now + cfg.playerHitSlowMs
           return { ...obs, hit: true }
         }
         return obs
@@ -373,9 +462,9 @@ export default function MealRaceGame() {
       race.opponents = race.opponents.map(o => {
         let next = { ...o }
         if (now >= next.nextEventAt) {
-          const getsSlowed = Math.random() < 0.34
-          next.nextEventAt = now + randomBetween(OPPONENT_EVENT_MIN_MS, OPPONENT_EVENT_MAX_MS)
-          if (getsSlowed) next.slowUntil = now + randomBetween(650, 1100)
+          const getsSlowed = Math.random() < cfg.opponentSlowChance
+          next.nextEventAt = now + randomBetween(cfg.opponentEventMinMs, cfg.opponentEventMaxMs)
+          if (getsSlowed) next.slowUntil = now + randomBetween(cfg.opponentSlowMinMs, cfg.opponentSlowMaxMs)
         }
 
         let speed = next.speed * randomBetween(0.94, 1.06)
@@ -446,7 +535,7 @@ export default function MealRaceGame() {
     const remainingDays = 7 - picks.length
 
     for (let i = 0; i < remainingDays; i++) {
-      const sim = simulateRace(pool)
+      const sim = simulateRace(pool, difficulty)
       nextPicks.push(sim.assignedMeal)
       pool = pool.filter(m => m.id !== sim.assignedMeal.id)
     }
@@ -461,7 +550,7 @@ export default function MealRaceGame() {
     const nextPicks: Meal[] = []
 
     for (let i = 0; i < 7; i++) {
-      const sim = simulateRace(remaining)
+      const sim = simulateRace(remaining, difficulty)
       nextPicks.push(sim.assignedMeal)
       remaining = remaining.filter(m => m.id !== sim.assignedMeal.id)
     }
@@ -495,7 +584,7 @@ export default function MealRaceGame() {
         <div className="text-6xl mb-6">🏎️</div>
         <h1 className="text-2xl font-bold uppercase tracking-[0.2em] text-[#2b2b2b] mb-2">Lilah&apos;s Meal Race</h1>
         <p className="text-sm text-[#2b2b2b]/55 uppercase tracking-widest mb-3 max-w-xs">Vertical racer mode is live</p>
-        <p className="text-xs text-[#2b2b2b]/40 mb-10 max-w-xs">Drag Lilah left and right to dodge cones. First to the finish chooses dinner.</p>
+        <p className="text-xs text-[#2b2b2b]/40 mb-10 max-w-xs">Drag Lilah left and right to dodge cones. Default is Slow mode for easier control.</p>
         <div className="flex flex-col gap-3 items-center">
           <button
             onClick={startGame}
@@ -548,7 +637,7 @@ export default function MealRaceGame() {
       <div className="border-2 border-[#2b2b2b] bg-[#1f1f1f] shadow-[4px_4px_0px_#2b2b2b] mb-4">
         <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
           <p className="text-[9px] uppercase tracking-[0.15em] font-bold text-white/45">Vertical Track</p>
-          <p className="text-[9px] uppercase tracking-[0.12em] text-white/30">Drag Left / Right</p>
+          <p className="text-[9px] uppercase tracking-[0.12em] text-white/30">{DIFFICULTY_CONFIG[difficulty].label} • Drag Left / Right</p>
         </div>
 
         <div
@@ -572,7 +661,7 @@ export default function MealRaceGame() {
           <div className="absolute top-8 left-0 right-0 h-2 bg-[repeating-conic-gradient(#fff_0%_25%,#000_0%_50%)] bg-[length:8px_8px] opacity-85" />
 
           {obstacles.map(obs => {
-            const y = 84 - (obs.progress - playerProgress) * 2.15
+            const y = 84 - (obs.progress - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
             if (y < -8 || y > 90) return null
             return (
               <div
@@ -588,7 +677,7 @@ export default function MealRaceGame() {
           })}
 
           {opponents.map(o => {
-            const y = 84 - (o.progress - playerProgress) * 2.15
+            const y = 84 - (o.progress - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
             if (y < -8 || y > 88) return null
             return (
               <div
@@ -645,12 +734,31 @@ export default function MealRaceGame() {
 
       <div className="flex gap-3 justify-center">
         {phase === 'ready' && (
-          <button
-            onClick={handleStartRace}
-            className="px-8 py-3 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#2b2b2b] transition-all duration-100"
-          >
-            ▶ Start Race
-          </button>
+          <div className="w-full">
+            <div className="flex justify-center gap-2 mb-3">
+              {(Object.keys(DIFFICULTY_CONFIG) as Difficulty[]).map(level => (
+                <button
+                  key={level}
+                  onClick={() => {
+                    initRace(mealPool, level)
+                  }}
+                  className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] transition-all ${
+                    difficulty === level ? 'bg-[#b85476] text-[#f0ebe0] shadow-[2px_2px_0px_#2b2b2b]' : 'bg-[#f0ebe0] text-[#2b2b2b]'
+                  }`}
+                >
+                  {DIFFICULTY_CONFIG[level].label}
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-center">
+              <button
+                onClick={handleStartRace}
+                className="px-8 py-3 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#2b2b2b] transition-all duration-100"
+              >
+                ▶ Start Race
+              </button>
+            </div>
+          </div>
         )}
 
         {phase === 'racing' && (

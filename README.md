@@ -25,6 +25,18 @@ A fun visual menu app for toddlers to help choose family dinners!
 2. Import to Vercel
 3. Deploy!
 
+## Required Environment Variables (Vercel)
+
+For AI meal generation and custom-recipe storage:
+
+- `OPENAI_API_KEY`
+- `ADMIN_PASSWORD`
+- One KV/Redis option:
+- `KV_REST_API_URL` and `KV_REST_API_TOKEN` (Vercel KV)
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (Upstash REST)
+
+If you accidentally set `VK_REST_API_URL` / `VK_REST_API_TOKEN`, rename them to `KV_*`.
+
 ## Meal Images Needed
 
 Add these 21 images to `public/images/`:
