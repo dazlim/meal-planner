@@ -170,26 +170,40 @@ function LilahCharacter({ state }: { state: LilaState }) {
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
-function DayStrip({ picks }: { picks: Meal[] }) {
+interface DayStripProps {
+  picks: Meal[]
+  selectedDay: number | null
+  onDayTap: (i: number) => void
+}
+
+function DayStrip({ picks, selectedDay, onDayTap }: DayStripProps) {
   return (
     <div className="grid grid-cols-7 gap-1 mb-4">
-      {DAYS.map((day, i) => (
-        <div
-          key={day}
-          className={`flex flex-col items-center border-2 border-[#2b2b2b] py-1 transition-colors duration-300 ${
-            picks[i] ? 'bg-[#7a5a90]' : 'bg-[#f0ebe0]'
-          }`}
-        >
-          <span
-            className={`text-[8px] font-bold uppercase tracking-wide ${
-              picks[i] ? 'text-[#f0ebe0]' : 'text-[#2b2b2b]/40'
-            }`}
+      {DAYS.map((day, i) => {
+        const filled = !!picks[i]
+        const isSelected = selectedDay === i
+        return (
+          <div
+            key={day}
+            onClick={() => filled && onDayTap(i)}
+            className={`flex flex-col items-center border-2 py-1 transition-colors duration-200
+              ${filled ? 'cursor-pointer' : 'cursor-default'}
+              ${isSelected
+                ? 'bg-[#b85476] border-[#b85476]'
+                : filled
+                  ? 'bg-[#7a5a90] border-[#2b2b2b] active:bg-[#5a3a70]'
+                  : 'bg-[#f0ebe0] border-[#2b2b2b]'
+              }`}
           >
-            {day}
-          </span>
-          <span className="text-base leading-none">{picks[i]?.emoji ?? '·'}</span>
-        </div>
-      ))}
+            <span className={`text-[8px] font-bold uppercase tracking-wide ${
+              filled ? 'text-[#f0ebe0]' : 'text-[#2b2b2b]/40'
+            }`}>
+              {day}
+            </span>
+            <span className="text-base leading-none">{picks[i]?.emoji ?? '·'}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -221,10 +235,25 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 // ─── Done Screen ──────────────────────────────────────────────────────────────
 
 function DoneScreen({ picks, onPlayAgain }: { picks: Meal[]; onPlayAgain: () => void }) {
+  const [orderedPicks, setOrderedPicks] = useState<Meal[]>(picks)
+  const [selected, setSelected] = useState<number | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const planText = DAYS.slice(0, picks.length)
-    .map((day, i) => `${day}  ${picks[i].emoji}  ${picks[i].title}`)
+  function handleRowTap(i: number) {
+    if (selected === null) {
+      setSelected(i)
+    } else if (selected === i) {
+      setSelected(null)
+    } else {
+      const next = [...orderedPicks]
+      ;[next[selected], next[i]] = [next[i], next[selected]]
+      setOrderedPicks(next)
+      setSelected(null)
+    }
+  }
+
+  const planText = DAYS.slice(0, orderedPicks.length)
+    .map((day, i) => `${day}  ${orderedPicks[i].emoji}  ${orderedPicks[i].title}`)
     .join('\n')
   const shareText = `🎉 Lilah's Week is Planned!\n\n${planText}`
 
@@ -247,24 +276,39 @@ function DoneScreen({ picks, onPlayAgain }: { picks: Meal[]; onPlayAgain: () => 
       <div className="mb-4">
         <LilahCharacter state="happy" />
       </div>
-      <h2 className="text-xl font-bold uppercase tracking-[0.15em] text-[#2b2b2b] mb-6">
+      <h2 className="text-xl font-bold uppercase tracking-[0.15em] text-[#2b2b2b] mb-1">
         🎉 Lilah&apos;s Week is Planned!
       </h2>
+      <p className="text-[10px] text-[#2b2b2b]/40 uppercase tracking-widest mb-5">
+        Tap two meals to swap their days
+      </p>
       <div className="w-full border-2 border-[#2b2b2b] bg-white shadow-[4px_4px_0px_#2b2b2b] mb-8">
-        {picks.map((meal, i) => (
-          <div
-            key={meal.id + i}
-            className="flex items-center gap-3 px-4 py-3 border-b border-[#2b2b2b]/10 last:border-0"
-          >
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#2b2b2b]/40 w-8">
-              {DAYS[i]}
-            </span>
-            <span className="text-xl">{meal.emoji}</span>
-            <span className="text-sm font-bold text-[#2b2b2b] uppercase tracking-[0.1em]">
-              {meal.title}
-            </span>
-          </div>
-        ))}
+        {orderedPicks.map((meal, i) => {
+          const isSelected = selected === i
+          return (
+            <div
+              key={meal.id + i}
+              onClick={() => handleRowTap(i)}
+              className={`flex items-center gap-3 px-4 py-3 border-b border-[#2b2b2b]/10 last:border-0 cursor-pointer transition-colors duration-150
+                ${isSelected ? 'bg-[#7a5a90]' : 'hover:bg-[#f0ebe0] active:bg-[#e8e0d0]'}`}
+            >
+              <span className={`text-[10px] font-bold uppercase tracking-widest w-8 ${
+                isSelected ? 'text-[#f0ebe0]' : 'text-[#2b2b2b]/40'
+              }`}>
+                {DAYS[i]}
+              </span>
+              <span className="text-xl">{meal.emoji}</span>
+              <span className={`text-sm font-bold uppercase tracking-[0.1em] flex-1 text-left ${
+                isSelected ? 'text-[#f0ebe0]' : 'text-[#2b2b2b]'
+              }`}>
+                {meal.title}
+              </span>
+              {isSelected && (
+                <span className="text-[#f0ebe0] text-xs">↕</span>
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className="flex gap-3">
         <button
@@ -295,6 +339,7 @@ export default function MealFlipGame() {
   const [canFlip, setCanFlip] = useState(true)
   const [lilaState, setLilaState] = useState<LilaState>('idle')
   const [showConfetti, setShowConfetti] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
 
   function startGame() {
     setCards(buildCards())
@@ -304,7 +349,23 @@ export default function MealFlipGame() {
     setCanFlip(true)
     setLilaState('idle')
     setShowConfetti(false)
+    setSelectedDay(null)
     setPhase('playing')
+  }
+
+  function handleDayTap(i: number) {
+    if (selectedDay === null) {
+      setSelectedDay(i)
+    } else if (selectedDay === i) {
+      setSelectedDay(null)
+    } else {
+      setPicks(prev => {
+        const next = [...prev]
+        ;[next[selectedDay], next[i]] = [next[i], next[selectedDay]]
+        return next
+      })
+      setSelectedDay(null)
+    }
   }
 
   const handleFlip = useCallback((card: Card) => {
@@ -377,7 +438,7 @@ export default function MealFlipGame() {
       {showConfetti && <Confetti />}
 
       {/* Day strip */}
-      <DayStrip picks={picks} />
+      <DayStrip picks={picks} selectedDay={selectedDay} onDayTap={handleDayTap} />
 
       {/* Score + Lilah row */}
       <div className="flex items-end justify-between mb-3">
