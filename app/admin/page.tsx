@@ -98,7 +98,7 @@ export default function AdminPage() {
 }
 
 function AdminUI({ password, onLogout }: { password: string; onLogout: () => void }) {
-  const [tab, setTab] = useState<'generate' | 'manage'>('generate')
+  const [tab, setTab] = useState<'generate' | 'manage' | 'invites'>('generate')
 
   return (
     <div className="min-h-screen bg-[#f0ebe0]">
@@ -121,7 +121,7 @@ function AdminUI({ password, onLogout }: { password: string; onLogout: () => voi
       <main className="max-w-3xl mx-auto px-4 py-6">
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
-          {(['generate', 'manage'] as const).map((t) => (
+          {(['generate', 'manage', 'invites'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -131,14 +131,181 @@ function AdminUI({ password, onLogout }: { password: string; onLogout: () => voi
                   : 'bg-[#f0ebe0] text-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#2b2b2b]'
               }`}
             >
-              {t === 'generate' ? 'Generate Recipe' : 'Manage Recipes'}
+              {t === 'generate' ? 'Generate Recipe' : t === 'manage' ? 'Manage Recipes' : 'Invite Codes'}
             </button>
           ))}
         </div>
 
         {tab === 'generate' && <GenerateTab password={password} />}
         {tab === 'manage' && <ManageTab password={password} />}
+        {tab === 'invites' && <InvitesTab password={password} />}
       </main>
+    </div>
+  )
+}
+
+function InvitesTab({ password }: { password: string }) {
+  const [maxUses, setMaxUses] = useState(1)
+  const [expiresInDays, setExpiresInDays] = useState(30)
+  const [note, setNote] = useState('')
+  const [familyId, setFamilyId] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState('')
+  const [generatedCode, setGeneratedCode] = useState('')
+  const [generatedMeta, setGeneratedMeta] = useState<{
+    id: string
+    expires_at: string
+    max_uses: number
+    family_id: string | null
+    note: string | null
+  } | null>(null)
+
+  const handleCreateInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreating(true)
+    setError('')
+    setGeneratedCode('')
+    setGeneratedMeta(null)
+
+    try {
+      const res = await fetch('/api/admin/invites', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': password,
+        },
+        body: JSON.stringify({
+          maxUses,
+          expiresInDays,
+          note: note.trim(),
+          familyId: familyId.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create invite code.')
+
+      setGeneratedCode(data.inviteCode || '')
+      setGeneratedMeta(data.invite || null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create invite code.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    if (!generatedCode) return
+    try {
+      await navigator.clipboard.writeText(generatedCode)
+    } catch {
+      // ignore clipboard failures
+    }
+  }
+
+  return (
+    <div>
+      <div className="bg-[#7a5a90] px-4 py-3 border-2 border-[#2b2b2b] mb-6">
+        <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
+          Create Invite Code
+        </span>
+      </div>
+
+      <form onSubmit={handleCreateInvite} className="border-2 border-[#2b2b2b] bg-[#f0ebe0] p-5 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-[0.15em] text-[#2b2b2b] mb-2">
+              Max Uses
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={maxUses}
+              onChange={(e) => setMaxUses(Number(e.target.value))}
+              className="w-full border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#b85476]"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-[0.15em] text-[#2b2b2b] mb-2">
+              Expires In (Days)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={expiresInDays}
+              onChange={(e) => setExpiresInDays(Number(e.target.value))}
+              className="w-full border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#b85476]"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-[0.15em] text-[#2b2b2b] mb-2">
+            Family ID (Optional)
+          </label>
+          <input
+            type="text"
+            value={familyId}
+            onChange={(e) => setFamilyId(e.target.value)}
+            placeholder="Leave blank for bootstrap invite"
+            className="w-full border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#b85476]"
+          />
+          <p className="mt-1 text-[11px] text-[#2b2b2b]/60">
+            Blank = creates a new family on redeem. Fill with a UUID to add users to an existing family.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-[0.15em] text-[#2b2b2b] mb-2">
+            Note (Optional)
+          </label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. Rita + Darren beta"
+            className="w-full border-2 border-[#2b2b2b] bg-[#f0ebe0] px-3 py-2 text-sm font-mono focus:outline-none focus:border-[#b85476]"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={creating}
+          className="px-5 py-2 bg-[#b85476] text-[#f0ebe0] font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b] shadow-[3px_3px_0px_#2b2b2b] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_#2b2b2b] transition-all duration-100 disabled:opacity-50"
+        >
+          {creating ? 'Creating...' : 'Generate Invite Code →'}
+        </button>
+      </form>
+
+      {error && (
+        <div className="border-2 border-[#b85476] p-4 mt-4 text-sm text-[#b85476] font-bold">
+          {error}
+        </div>
+      )}
+
+      {generatedCode && (
+        <div className="border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] bg-[#f0ebe0] p-5 mt-5">
+          <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#2b2b2b]/70 mb-2">
+            Share This Invite Code (shown once)
+          </p>
+          <div className="flex gap-2 items-stretch flex-wrap">
+            <code className="px-3 py-2 border-2 border-[#2b2b2b] bg-white text-sm font-bold tracking-[0.08em] break-all">
+              {generatedCode}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="px-4 py-2 bg-[#7a5a90] text-[#f0ebe0] font-bold uppercase tracking-[0.12em] text-xs border-2 border-[#2b2b2b]"
+            >
+              Copy
+            </button>
+          </div>
+          {generatedMeta && (
+            <p className="text-xs text-[#2b2b2b]/60 mt-3">
+              Max uses: {generatedMeta.max_uses} • Expires: {new Date(generatedMeta.expires_at).toLocaleString()}
+              {generatedMeta.family_id ? ` • Family: ${generatedMeta.family_id}` : ' • Bootstrap invite'}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
