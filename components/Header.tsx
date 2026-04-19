@@ -67,9 +67,16 @@ export default function Header({ badge, right }: HeaderProps) {
             <Link
               href="/admin"
               onClick={() => setOpen(false)}
-              className="flex items-center px-5 py-4 text-white font-bold uppercase tracking-[0.15em] text-sm hover:bg-white/5 transition-colors"
+              className="flex items-center px-5 py-4 text-white font-bold uppercase tracking-[0.15em] text-sm border-b border-white/10 hover:bg-white/5 transition-colors"
             >
               → Admin Panel
+            </Link>
+            <Link
+              href="/game"
+              onClick={() => setOpen(false)}
+              className="flex items-center px-5 py-4 text-white font-bold uppercase tracking-[0.15em] text-sm hover:bg-white/5 transition-colors"
+            >
+              → Meal Game
             </Link>
           </div>
         </>
