@@ -66,7 +66,7 @@ function resolveIngredientCategory(ingredientName: string) {
   if (/(canned|can|jar|beans|tomatoes|stock|broth)/.test(t)) return 'Canned & Jarred'
   if (/(sauce|soy|oil|vinegar|salt|pepper|paprika|oregano|curry|spice|sesame|honey|mustard|ketchup|worcestershire)/.test(t)) return 'Sauces, Spices & Oils'
   if (/(frozen|chips|peas|fish fingers)/.test(t)) return 'Frozen'
-  if (/(onion|garlic|ginger|carrot|broccoli|capsicum|tomato|lettuce|zucchini|celery|potato|avocado|spring onion|mushroom|lemon|parsley)/.test(t)) return 'Vegetables & Fruit'
+  if (/(onion|garlic|ginger|carrot|broccoli|capsicum|tomato|lettuce|zucchini|celery|potato|avocado|spring onion|mushroom|lemon|parsley|bok choy)/.test(t)) return 'Vegetables & Fruit'
   return 'Pantry & Other'
 }
 
@@ -298,22 +298,6 @@ export default function FullShoppingListPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {staples.length > 0 && (
-              <section>
-                <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2b2b2b]/65 mb-2">
-                  Household Staples (likely already have)
-                </h3>
-                <p className="text-xs text-[#2b2b2b]/55 mb-2">
-                  We’ve grouped common pantry basics here so you can decide if you still need to buy them.
-                </p>
-                <div className="space-y-2">
-                  {staples.map((item) => (
-                    <IngredientRow key={item.key} item={item} />
-                  ))}
-                </div>
-              </section>
-            )}
-
             {sortMode === 'alpha' && (
               <div className="space-y-2">
                 {coreItems.map((item) => (
@@ -334,6 +318,22 @@ export default function FullShoppingListPage() {
                 </div>
               </section>
             ))}
+
+            {staples.length > 0 && (
+              <section>
+                <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2b2b2b]/65 mb-2">
+                  Household Staples (likely already have)
+                </h3>
+                <p className="text-xs text-[#2b2b2b]/55 mb-2">
+                  We’ve grouped common pantry basics here so you can decide if you still need to buy them.
+                </p>
+                <div className="space-y-2">
+                  {staples.map((item) => (
+                    <IngredientRow key={item.key} item={item} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
