@@ -11,6 +11,8 @@ interface CollatedItem {
   count: number
   recipeCount: number
   variants: string[]
+  recipes: string[]
+  optionalIn: string[]
 }
 
 type SortMode = 'alpha' | 'category'
@@ -29,6 +31,17 @@ const CATEGORY_ORDER = [
   'Frozen',
   'Pantry & Other',
 ] as const
+
+const HOUSEHOLD_STAPLE_PATTERN = /(salt|pepper|olive oil|vegetable oil|sesame oil|soy sauce|honey|herb|spice|oregano|paprika|curry|vinegar|mustard|ketchup|worcestershire)/
+
+function looksOptional(ingredientVariant: string) {
+  const t = ingredientVariant.toLowerCase()
+  return /(optional|to serve|if using|to taste)/.test(t)
+}
+
+function isHouseholdStaple(name: string) {
+  return HOUSEHOLD_STAPLE_PATTERN.test(name.toLowerCase())
+}
 
 function normalizeIngredientName(ingredient: string) {
   return ingredient
@@ -58,7 +71,16 @@ function resolveIngredientCategory(ingredientName: string) {
 }
 
 function collateIngredients(meals: CartMeal[]): CollatedItem[] {
-  const map = new Map<string, { name: string; count: number; recipes: Set<string>; variants: Set<string> }>()
+  const map = new Map<
+    string,
+    {
+      name: string
+      count: number
+      recipes: Set<string>
+      optionalIn: Set<string>
+      variants: Set<string>
+    }
+  >()
 
   for (const meal of meals) {
     for (const ingredient of meal.ingredients) {
@@ -68,11 +90,13 @@ function collateIngredients(meals: CartMeal[]): CollatedItem[] {
         existing.count += 1
         existing.recipes.add(meal.title)
         existing.variants.add(ingredient)
+        if (looksOptional(ingredient)) existing.optionalIn.add(meal.title)
       } else {
         map.set(key, {
           name: displayIngredientName(ingredient),
           count: 1,
           recipes: new Set([meal.title]),
+          optionalIn: looksOptional(ingredient) ? new Set([meal.title]) : new Set<string>(),
           variants: new Set([ingredient]),
         })
       }
@@ -85,6 +109,8 @@ function collateIngredients(meals: CartMeal[]): CollatedItem[] {
       name: value.name,
       count: value.count,
       recipeCount: value.recipes.size,
+      recipes: Array.from(value.recipes).sort((a, b) => a.localeCompare(b)),
+      optionalIn: Array.from(value.optionalIn).sort((a, b) => a.localeCompare(b)),
       variants: Array.from(value.variants),
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -94,24 +120,15 @@ export default function FullShoppingListPage() {
   const [cartMeals, setCartMeals] = useState<CartMeal[]>([])
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<SortMode>('category')
-
-  useEffect(() => {
-    const update = () => setCartMeals(getMealCart())
-    update()
-    window.addEventListener(getCartUpdatedEventName(), update)
-    window.addEventListener('storage', update)
-    return () => {
-      window.removeEventListener(getCartUpdatedEventName(), update)
-      window.removeEventListener('storage', update)
-    }
-  }, [])
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(CHECKED_KEY)
-      if (!raw) return
-      const parsed = JSON.parse(raw) as string[]
-      if (Array.isArray(parsed)) setChecked(new Set(parsed))
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[]
+        if (Array.isArray(parsed)) setChecked(new Set(parsed))
+      }
     } catch {
       // ignore invalid local storage
     }
@@ -120,12 +137,25 @@ export default function FullShoppingListPage() {
     if (savedSort === 'alpha' || savedSort === 'category') {
       setSortMode(savedSort)
     }
+
+    const update = () => setCartMeals(getMealCart())
+    update()
+    setHydrated(true)
+
+    window.addEventListener(getCartUpdatedEventName(), update)
+    window.addEventListener('storage', update)
+    return () => {
+      window.removeEventListener(getCartUpdatedEventName(), update)
+      window.removeEventListener('storage', update)
+    }
   }, [])
 
   const items = useMemo(() => collateIngredients(cartMeals), [cartMeals])
+  const staples = useMemo(() => items.filter((item) => isHouseholdStaple(item.name)), [items])
+  const coreItems = useMemo(() => items.filter((item) => !isHouseholdStaple(item.name)), [items])
   const categories = useMemo(() => {
     const grouped = new Map<string, CollatedItem[]>()
-    for (const item of items) {
+    for (const item of coreItems) {
       const category = resolveIngredientCategory(item.name)
       const list = grouped.get(category) ?? []
       list.push(item)
@@ -137,16 +167,17 @@ export default function FullShoppingListPage() {
     return CATEGORY_ORDER
       .map((category) => ({ category, items: grouped.get(category) ?? [] }))
       .filter((group) => group.items.length > 0)
-  }, [items])
+  }, [coreItems])
 
   useEffect(() => {
+    if (!hydrated) return
     const validKeys = new Set(items.map((item) => item.key))
     setChecked((prev) => {
       const next = new Set(Array.from(prev).filter((key) => validKeys.has(key)))
       window.localStorage.setItem(CHECKED_KEY, JSON.stringify(Array.from(next)))
       return next
     })
-  }, [items])
+  }, [items, hydrated])
 
   function toggleItem(key: string) {
     setChecked((prev) => {
@@ -161,6 +192,46 @@ export default function FullShoppingListPage() {
   function handleSetSortMode(mode: SortMode) {
     setSortMode(mode)
     window.localStorage.setItem(SORT_MODE_KEY, mode)
+  }
+
+  function IngredientRow({ item }: { item: CollatedItem }) {
+    const isChecked = checked.has(item.key)
+    return (
+      <div
+        key={item.key}
+        className={`border-2 border-[#2b2b2b] p-4 transition-colors ${
+          isChecked ? 'bg-[#2b2b2b]/10' : 'bg-[#f0ebe0]'
+        }`}
+      >
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => toggleItem(item.key)}
+            className="mt-1 w-4 h-4 accent-[#b85476] flex-shrink-0 cursor-pointer"
+          />
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-bold ${isChecked ? 'line-through text-[#2b2b2b]/40' : 'text-[#2b2b2b]'}`}>
+              {item.name}
+              {item.count > 1 ? ` ×${item.count}` : ''}
+            </p>
+            <p className="text-xs text-[#2b2b2b]/55 mt-1">
+              Contributes to: {item.recipes.join(', ')}
+            </p>
+            {item.optionalIn.length > 0 && (
+              <p className="text-xs text-[#2b2b2b]/55 mt-1">
+                Can be left off in: {item.optionalIn.join(', ')}
+              </p>
+            )}
+            {!isChecked && item.variants.length > 0 && (
+              <p className="text-xs text-[#7a5a90] mt-2">
+                e.g. {item.variants.slice(0, 2).join(' • ')}
+              </p>
+            )}
+          </div>
+        </label>
+      </div>
+    )
   }
 
   return (
@@ -195,7 +266,7 @@ export default function FullShoppingListPage() {
 
         <div className="border-2 border-[#2b2b2b] bg-white shadow-[4px_4px_0px_#2b2b2b] px-4 py-3 mb-4">
           <p className="text-xs text-[#2b2b2b]/70 uppercase tracking-[0.12em]">
-            {cartMeals.length} recipes in cart • {items.length} combined ingredients
+            {cartMeals.length} recipes in cart • {coreItems.length} combined ingredients
           </p>
         </div>
 
@@ -227,42 +298,27 @@ export default function FullShoppingListPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {staples.length > 0 && (
+              <section>
+                <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2b2b2b]/65 mb-2">
+                  Household Staples (likely already have)
+                </h3>
+                <p className="text-xs text-[#2b2b2b]/55 mb-2">
+                  We’ve grouped common pantry basics here so you can decide if you still need to buy them.
+                </p>
+                <div className="space-y-2">
+                  {staples.map((item) => (
+                    <IngredientRow key={item.key} item={item} />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {sortMode === 'alpha' && (
               <div className="space-y-2">
-                {items.map((item) => {
-                  const isChecked = checked.has(item.key)
-                  return (
-                    <div
-                      key={item.key}
-                      className={`border-2 border-[#2b2b2b] p-4 transition-colors ${
-                        isChecked ? 'bg-[#2b2b2b]/10' : 'bg-[#f0ebe0]'
-                      }`}
-                    >
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleItem(item.key)}
-                          className="mt-1 w-4 h-4 accent-[#b85476] flex-shrink-0 cursor-pointer"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-bold ${isChecked ? 'line-through text-[#2b2b2b]/40' : 'text-[#2b2b2b]'}`}>
-                            {item.name}
-                            {item.count > 1 ? ` ×${item.count}` : ''}
-                          </p>
-                          <p className="text-xs text-[#2b2b2b]/55 mt-1">
-                            Used across {item.recipeCount} {item.recipeCount === 1 ? 'recipe' : 'recipes'}
-                          </p>
-                          {!isChecked && item.variants.length > 0 && (
-                            <p className="text-xs text-[#7a5a90] mt-2">
-                              e.g. {item.variants.slice(0, 2).join(' • ')}
-                            </p>
-                          )}
-                        </div>
-                      </label>
-                    </div>
-                  )
-                })}
+                {coreItems.map((item) => (
+                  <IngredientRow key={item.key} item={item} />
+                ))}
               </div>
             )}
 
@@ -272,40 +328,9 @@ export default function FullShoppingListPage() {
                   {group.category}
                 </h3>
                 <div className="space-y-2">
-                  {group.items.map((item) => {
-                    const isChecked = checked.has(item.key)
-                    return (
-                      <div
-                        key={item.key}
-                        className={`border-2 border-[#2b2b2b] p-4 transition-colors ${
-                          isChecked ? 'bg-[#2b2b2b]/10' : 'bg-[#f0ebe0]'
-                        }`}
-                      >
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleItem(item.key)}
-                            className="mt-1 w-4 h-4 accent-[#b85476] flex-shrink-0 cursor-pointer"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-bold ${isChecked ? 'line-through text-[#2b2b2b]/40' : 'text-[#2b2b2b]'}`}>
-                              {item.name}
-                              {item.count > 1 ? ` ×${item.count}` : ''}
-                            </p>
-                            <p className="text-xs text-[#2b2b2b]/55 mt-1">
-                              Used across {item.recipeCount} {item.recipeCount === 1 ? 'recipe' : 'recipes'}
-                            </p>
-                            {!isChecked && item.variants.length > 0 && (
-                              <p className="text-xs text-[#7a5a90] mt-2">
-                                e.g. {item.variants.slice(0, 2).join(' • ')}
-                              </p>
-                            )}
-                          </div>
-                        </label>
-                      </div>
-                    )
-                  })}
+                  {group.items.map((item) => (
+                    <IngredientRow key={item.key} item={item} />
+                  ))}
                 </div>
               </section>
             ))}
