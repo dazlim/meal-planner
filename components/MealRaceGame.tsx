@@ -49,6 +49,7 @@ const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 const NUM_MEAL_RACERS = 4
 const RACE_LENGTH = 100
 const TICK_MS = 50
+const CONFETTI_COLORS = ['#b85476', '#7a5a90', '#f0ebe0', '#2b2b2b']
 const DIFFICULTY_CONFIG: Record<
   Difficulty,
   {
@@ -258,6 +259,49 @@ function LilahFace() {
   )
 }
 
+function Confetti() {
+  const pieces = Array.from({ length: 28 }, (_, i) => ({
+    key: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 1.8,
+    duration: 2 + Math.random() * 2,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    size: 8 + Math.floor(Math.random() * 8),
+  }))
+
+  return (
+    <>
+      <style>{`
+        @keyframes confetti-fall {
+          0%   { top: -5%; transform: rotate(0deg); opacity: 1; }
+          100% { top: 108vh; transform: rotate(720deg); opacity: 0.6; }
+        }
+      `}</style>
+      {pieces.map(p => (
+        <div
+          key={p.key}
+          style={{
+            position: 'fixed',
+            left: `${p.left}%`,
+            top: '-5%',
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            borderRadius: p.size > 12 ? '50%' : '2px',
+            animationName: 'confetti-fall',
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+            animationTimingFunction: 'linear',
+            animationFillMode: 'both',
+            pointerEvents: 'none',
+            zIndex: 50,
+          }}
+        />
+      ))}
+    </>
+  )
+}
+
 function DayStrip({ picks }: { picks: Meal[] }) {
   return (
     <div className="grid grid-cols-7 gap-1 mb-3">
@@ -371,6 +415,7 @@ export default function MealRaceGame() {
   const [difficulty, setDifficulty] = useState<Difficulty>('slow')
   const [winner, setWinner] = useState<RaceWinner | null>(null)
   const [assignedMeal, setAssignedMeal] = useState<Meal | null>(null)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [picks, setPicks] = useState<Meal[]>([])
   const [mealPool, setMealPool] = useState<Meal[]>(staticMeals as Meal[])
 
@@ -384,6 +429,7 @@ export default function MealRaceGame() {
   const trackRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef(false)
   const stopRef = useRef(false)
+  const confettiTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const dayNum = picks.length + 1
 
@@ -401,6 +447,7 @@ export default function MealRaceGame() {
     syncRaceState(next)
     setWinner(null)
     setAssignedMeal(null)
+    setShowConfetti(false)
     setDifficulty(nextDifficulty)
     setPhase('ready')
   }
@@ -414,7 +461,25 @@ export default function MealRaceGame() {
     syncRaceState(next)
     setWinner(null)
     setAssignedMeal(null)
+    setShowConfetti(false)
     setPhase('ready')
+  }
+
+  function triggerWinnerEffects(finalWinner: RaceWinner) {
+    if (confettiTimeoutRef.current) {
+      clearTimeout(confettiTimeoutRef.current)
+      confettiTimeoutRef.current = null
+    }
+
+    if (finalWinner.isLilah) {
+      setShowConfetti(true)
+      confettiTimeoutRef.current = setTimeout(() => {
+        setShowConfetti(false)
+        confettiTimeoutRef.current = null
+      }, 2500)
+    } else {
+      setShowConfetti(false)
+    }
   }
 
   function setPlayerLaneFromClientX(clientX: number) {
@@ -488,6 +553,7 @@ export default function MealRaceGame() {
         const meal = pickAssignedMeal(finalWinner, race.opponents)
         setWinner(finalWinner)
         setAssignedMeal(meal)
+        triggerWinnerEffects(finalWinner)
         setTimeout(() => setPhase('result'), 400)
       }
 
@@ -515,6 +581,7 @@ export default function MealRaceGame() {
     const meal = pickAssignedMeal(finalWinner, race.opponents)
     setWinner(finalWinner)
     setAssignedMeal(meal)
+    triggerWinnerEffects(finalWinner)
     setPhase('result')
   }
 
@@ -582,6 +649,12 @@ export default function MealRaceGame() {
     }
   }
 
+  useEffect(() => {
+    return () => {
+      if (confettiTimeoutRef.current) clearTimeout(confettiTimeoutRef.current)
+    }
+  }, [])
+
   if (phase === 'welcome') {
     return (
       <main className="flex flex-col items-center justify-center min-h-[65vh] px-6 py-10 text-center">
@@ -617,6 +690,7 @@ export default function MealRaceGame() {
 
   return (
     <main className="max-w-lg mx-auto px-3 py-4">
+      {showConfetti && <Confetti />}
       <DayStrip picks={picks} />
 
       <div className="flex items-center justify-between mb-3">
