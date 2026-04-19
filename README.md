@@ -31,8 +31,9 @@ For AI meal generation and custom-recipe storage:
 
 - `OPENAI_API_KEY`
 - `ADMIN_PASSWORD`
-- One KV/Redis option:
-- `KV_REST_API_URL` and `KV_REST_API_TOKEN` (Vercel KV)
+- One storage option (preferred first):
+- `REDIS_URL` (portable Redis connection string)
+- `KV_REST_API_URL` and `KV_REST_API_TOKEN` (Vercel KV REST)
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (Upstash REST)
 
 If you accidentally set `VK_REST_API_URL` / `VK_REST_API_TOKEN`, rename them to `KV_*`.

@@ -16,6 +16,14 @@ interface KvLikeClient {
   set(key: string, value: unknown): Promise<unknown>
 }
 
+interface JsonStoreClient {
+  getJson<T>(key: string): Promise<T | null>
+  setJson(key: string, value: unknown): Promise<void>
+}
+
+let redisStorePromise: Promise<JsonStoreClient> | null = null
+let kvStorePromise: Promise<JsonStoreClient> | null = null
+
 function getKvConfig() {
   const hasVkTypo = !!(process.env.VK_REST_API_URL || process.env.VK_REST_API_TOKEN)
 
@@ -32,9 +40,13 @@ function getKvConfig() {
   return { url, token, hasVkTypo }
 }
 
-function isKvConfigured(): boolean {
+function isKvConfigured() {
   const { url, token } = getKvConfig()
   return !!(url && token)
+}
+
+function isRedisUrlConfigured() {
+  return !!process.env.REDIS_URL
 }
 
 function kvConfigErrorMessage(): string {
@@ -57,24 +69,98 @@ async function getKvClient(): Promise<KvLikeClient> {
   return kv as KvLikeClient
 }
 
+async function getRedisStoreClient(): Promise<JsonStoreClient> {
+  if (!process.env.REDIS_URL) {
+    throw new Error('REDIS_URL is not configured.')
+  }
+
+  if (!redisStorePromise) {
+    redisStorePromise = (async () => {
+      let createClient: ((options?: { url?: string }) => {
+        isOpen: boolean
+        connect(): Promise<void>
+        get(key: string): Promise<string | null>
+        set(key: string, value: string): Promise<unknown>
+      }) | undefined
+
+      try {
+        ;({ createClient } = await import('redis'))
+      } catch {
+        throw new Error('REDIS_URL is configured but the `redis` package is missing. Add dependency: npm install redis')
+      }
+
+      if (!createClient) {
+        throw new Error('Could not initialize Redis client.')
+      }
+
+      const client = createClient({ url: process.env.REDIS_URL })
+      if (!client.isOpen) await client.connect()
+
+      return {
+        async getJson<T>(key: string): Promise<T | null> {
+          const raw = await client.get(key)
+          if (!raw) return null
+          try {
+            return JSON.parse(raw) as T
+          } catch {
+            return null
+          }
+        },
+        async setJson(key: string, value: unknown): Promise<void> {
+          await client.set(key, JSON.stringify(value))
+        },
+      }
+    })()
+  }
+
+  return redisStorePromise
+}
+
+async function getKvStoreClient(): Promise<JsonStoreClient> {
+  if (!kvStorePromise) {
+    kvStorePromise = (async () => {
+      const client = await getKvClient()
+      return {
+        async getJson<T>(key: string): Promise<T | null> {
+          return (await client.get<T>(key)) ?? null
+        },
+        async setJson(key: string, value: unknown): Promise<void> {
+          await client.set(key, value)
+        },
+      }
+    })()
+  }
+  return kvStorePromise
+}
+
+async function getStoreClient(): Promise<JsonStoreClient> {
+  if (isRedisUrlConfigured()) {
+    return getRedisStoreClient()
+  }
+  if (isKvConfigured()) {
+    return getKvStoreClient()
+  }
+  throw new Error(`${kvConfigErrorMessage()} Or configure REDIS_URL.`)
+}
+
 export async function getCustomMeals(): Promise<CustomMeal[]> {
-  if (!isKvConfigured()) return []
+  if (!isRedisUrlConfigured() && !isKvConfigured()) return []
   try {
-    const client = await getKvClient()
-    return (await client.get<CustomMeal[]>(KV_KEY)) ?? []
+    const store = await getStoreClient()
+    return (await store.getJson<CustomMeal[]>(KV_KEY)) ?? []
   } catch {
     return []
   }
 }
 
 export async function saveCustomMeal(meal: CustomMeal): Promise<void> {
-  const client = await getKvClient()
-  const existing = (await client.get<CustomMeal[]>(KV_KEY)) ?? []
-  await client.set(KV_KEY, [...existing, meal])
+  const store = await getStoreClient()
+  const existing = (await store.getJson<CustomMeal[]>(KV_KEY)) ?? []
+  await store.setJson(KV_KEY, [...existing, meal])
 }
 
 export async function deleteCustomMeal(id: string): Promise<void> {
-  const client = await getKvClient()
-  const existing = (await client.get<CustomMeal[]>(KV_KEY)) ?? []
-  await client.set(KV_KEY, existing.filter((m) => m.id !== id))
+  const store = await getStoreClient()
+  const existing = (await store.getJson<CustomMeal[]>(KV_KEY)) ?? []
+  await store.setJson(KV_KEY, existing.filter((m) => m.id !== id))
 }
