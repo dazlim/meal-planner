@@ -76,24 +76,19 @@ async function getRedisStoreClient(): Promise<JsonStoreClient> {
 
   if (!redisStorePromise) {
     redisStorePromise = (async () => {
-      let createClient: ((options?: { url?: string }) => {
-        isOpen: boolean
-        connect(): Promise<void>
-        get(key: string): Promise<string | null>
-        set(key: string, value: string): Promise<unknown>
-      }) | undefined
+      let redisModule: any
 
       try {
-        ;({ createClient } = await import('redis'))
+        redisModule = await import('redis')
       } catch {
         throw new Error('REDIS_URL is configured but the `redis` package is missing. Add dependency: npm install redis')
       }
 
-      if (!createClient) {
+      if (!redisModule?.createClient) {
         throw new Error('Could not initialize Redis client.')
       }
 
-      const client = createClient({ url: process.env.REDIS_URL })
+      const client = redisModule.createClient({ url: process.env.REDIS_URL })
       if (!client.isOpen) await client.connect()
 
       return {
