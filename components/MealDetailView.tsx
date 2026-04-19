@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
 import { meals as staticMeals } from '@/data/meals'
 import { getHintForIngredient } from '@/data/shopping-hints'
 import { mealAlternatives } from '@/data/meal-alternatives'
+import { getCartUpdatedEventName, isMealInCart, toggleMealInCart } from '@/lib/meal-cart'
 import type { AnyMeal } from '@/lib/types'
 
 interface ChatMessage {
@@ -20,6 +22,7 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
   const [activeTab, setActiveTab] = useState<'instructions' | 'shopping'>(initialView)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [activeMethod, setActiveMethod] = useState('standard')
+  const [inCart, setInCart] = useState(false)
 
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -37,6 +40,17 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
     }
   }, [messages, chatOpen])
+
+  useEffect(() => {
+    const update = () => setInCart(isMealInCart(meal.id))
+    update()
+    window.addEventListener(getCartUpdatedEventName(), update)
+    window.addEventListener('storage', update)
+    return () => {
+      window.removeEventListener(getCartUpdatedEventName(), update)
+      window.removeEventListener('storage', update)
+    }
+  }, [meal.id])
 
   function toggleChecked(ingredient: string) {
     setChecked((prev) => {
@@ -83,6 +97,16 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
     }
   }
 
+  function handleToggleCart() {
+    const next = toggleMealInCart({
+      id: meal.id,
+      title: meal.title,
+      emoji: meal.emoji,
+      ingredients: meal.ingredients,
+    })
+    setInCart(next)
+  }
+
   return (
     <>
       {/* Tab switcher */}
@@ -109,44 +133,74 @@ export default function MealDetailView({ meal, initialView = 'instructions' }: P
         </button>
       </div>
 
+      <div className="flex items-center justify-between border-2 border-[#2b2b2b] bg-white shadow-[4px_4px_0px_#2b2b2b] px-4 py-3 mb-6">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#2b2b2b]/70">
+          {inCart ? 'Added to cart' : 'Not in cart'}
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleToggleCart}
+            className={`px-3 py-2 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] ${
+              inCart ? 'bg-[#b85476] text-[#f0ebe0]' : 'bg-[#f0ebe0] text-[#2b2b2b]'
+            }`}
+          >
+            {inCart ? '🛒 Remove' : '🛒 Add to Cart'}
+          </button>
+          <Link
+            href="/menu/shopping"
+            className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+          >
+            Full List
+          </Link>
+        </div>
+      </div>
+
       {/* ── INSTRUCTIONS TAB ── */}
       {activeTab === 'instructions' && (
         <div className="space-y-4">
           {/* Cooking method selector */}
           {alternatives.length > 0 && (
-            <div className="border-2 border-[#2b2b2b] p-4 bg-[#f0ebe0]">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#2b2b2b]/50 mb-3">
-                Cooking Method
-              </p>
-              <div className="flex flex-wrap gap-2">
+            <div className="border-2 border-[#2b2b2b] shadow-[4px_4px_0px_#2b2b2b] overflow-hidden">
+              <div className="bg-[#2b2b2b] px-4 py-2">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#f0ebe0]/70">
+                  Cooking Method
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row">
                 <button
                   onClick={() => setActiveMethod('standard')}
-                  className={`px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] border-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] border-b-2 sm:border-b-0 sm:border-r-2 border-[#2b2b2b] transition-colors flex-1 ${
                     activeMethod === 'standard'
-                      ? 'bg-[#2b2b2b] text-[#f0ebe0] border-[#2b2b2b]'
-                      : 'bg-[#f0ebe0] text-[#2b2b2b] border-[#2b2b2b] hover:bg-[#2b2b2b]/10'
+                      ? 'bg-[#2b2b2b] text-[#f0ebe0]'
+                      : 'bg-[#f0ebe0] text-[#2b2b2b] hover:bg-[#2b2b2b]/10'
                   }`}
                 >
-                  🍳 Standard
+                  <span>🍳</span> Standard
                 </button>
-                {alternatives.map((alt) => (
+                {alternatives.map((alt, i) => (
                   <button
                     key={alt.method}
                     onClick={() => setActiveMethod(alt.method)}
-                    className={`px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] border-2 transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-3 text-xs font-bold uppercase tracking-[0.1em] transition-colors flex-1 ${
+                      i < alternatives.length - 1
+                        ? 'border-b-2 sm:border-b-0 sm:border-r-2 border-[#2b2b2b]'
+                        : ''
+                    } ${
                       activeMethod === alt.method
-                        ? 'bg-[#b85476] text-[#f0ebe0] border-[#b85476]'
-                        : 'bg-[#f0ebe0] text-[#2b2b2b] border-[#2b2b2b] hover:bg-[#b85476]/10'
+                        ? 'bg-[#b85476] text-[#f0ebe0]'
+                        : 'bg-[#f0ebe0] text-[#2b2b2b] hover:bg-[#b85476]/10'
                     }`}
                   >
-                    {alt.icon} {alt.label}
+                    <span>{alt.icon}</span> {alt.label}
                   </button>
                 ))}
               </div>
               {selectedAlt?.note && (
-                <p className="mt-3 text-xs text-[#7a5a90] leading-snug">
-                  ℹ️ {selectedAlt.note}
-                </p>
+                <div className="border-t-2 border-[#2b2b2b] px-4 py-2 bg-[#7a5a90]/10">
+                  <p className="text-xs text-[#7a5a90] leading-snug">
+                    ℹ️ {selectedAlt.note}
+                  </p>
+                </div>
               )}
             </div>
           )}

@@ -65,6 +65,13 @@ export default function Header({ badge, right }: HeaderProps) {
               → Dinner Menu
             </Link>
             <Link
+              href="/menu/shopping"
+              onClick={() => setOpen(false)}
+              className="flex items-center px-5 py-4 text-white font-bold uppercase tracking-[0.15em] text-sm border-b border-white/10 hover:bg-white/5 transition-colors"
+            >
+              → Full Shopping List
+            </Link>
+            <Link
               href="/admin"
               onClick={() => setOpen(false)}
               className="flex items-center px-5 py-4 text-white font-bold uppercase tracking-[0.15em] text-sm border-b border-white/10 hover:bg-white/5 transition-colors"
