@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import Header from '@/components/Header'
 import { clearMealCart, getCartUpdatedEventName, getMealCart, type CartMeal } from '@/lib/meal-cart'
@@ -177,8 +176,6 @@ export default function FullShoppingListPage() {
       return null
     }
   }, [])
-  const searchParams = useSearchParams()
-
   useEffect(() => {
     const update = () => setCartMeals(getMealCart())
 
@@ -191,7 +188,7 @@ export default function FullShoppingListPage() {
       const savedSort = window.localStorage.getItem(SORT_MODE_KEY)
       if (savedSort === 'alpha' || savedSort === 'category') setSortMode(savedSort)
       const savedMode = window.localStorage.getItem(MODE_KEY)
-      const urlMode = searchParams.get('mode')
+      const urlMode = new URLSearchParams(window.location.search).get('mode')
       if (urlMode === 'personal' || urlMode === 'shared') setListMode(urlMode)
       else if (savedMode === 'personal' || savedMode === 'shared') setListMode(savedMode)
     } catch {
@@ -206,7 +203,7 @@ export default function FullShoppingListPage() {
       window.removeEventListener(getCartUpdatedEventName(), update)
       window.removeEventListener('storage', update)
     }
-  }, [searchParams])
+  }, [])
 
   const personalItems = useMemo(() => collateIngredients(cartMeals), [cartMeals])
   const collatedShared = useMemo(() => collateFromShared(sharedItems), [sharedItems])
