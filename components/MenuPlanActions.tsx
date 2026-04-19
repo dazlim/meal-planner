@@ -42,9 +42,11 @@ export default function MenuPlanActions() {
     if (!supabase) return
     let mounted = true
 
-    supabase.auth.getSession().then(({ data }) => {
+    // getUser() makes a live API call to validate the JWT and fully hydrates
+    // the client's auth state — ensures subsequent DB calls include the Bearer token.
+    supabase.auth.getUser().then(({ data }) => {
       if (!mounted) return
-      setSessionUserId(data.session?.user?.id ?? null)
+      setSessionUserId(data.user?.id ?? null)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -67,27 +69,16 @@ export default function MenuPlanActions() {
 
     async function loadFamilyContext() {
       try {
-        const { data: profile } = await sb
-          .from('profiles')
-          .select('approved_at')
-          .eq('user_id', sessionUserId)
-          .maybeSingle()
-
-        const approved = !!profile?.approved_at
-        setIsApproved(approved)
-        if (!approved) {
+        const { data, error } = await sb.rpc('get_my_family_context')
+        if (error) {
+          setMessage(`Error loading family context: ${error.message}`)
           setFamilyId(null)
+          setIsApproved(false)
           return
         }
-
-        const { data: membership } = await sb
-          .from('family_members')
-          .select('family_id')
-          .eq('user_id', sessionUserId)
-          .limit(1)
-          .maybeSingle()
-
-        setFamilyId(membership?.family_id ?? null)
+        const ctx = data as { is_approved: boolean; family_id: string | null } | null
+        setIsApproved(ctx?.is_approved ?? false)
+        setFamilyId(ctx?.family_id ?? null)
       } catch {
         setFamilyId(null)
         setIsApproved(false)

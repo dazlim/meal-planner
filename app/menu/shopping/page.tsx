@@ -247,10 +247,10 @@ export default function FullShoppingListPage() {
     if (!supabase) return
     let mounted = true
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getUser().then(({ data }) => {
       if (!mounted) return
-      setSessionUserId(data.session?.user?.id ?? null)
-      setSessionEmail(data.session?.user?.email ?? null)
+      setSessionUserId(data.user?.id ?? null)
+      setSessionEmail(data.user?.email ?? null)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -264,31 +264,24 @@ export default function FullShoppingListPage() {
     }
   }, [supabase])
 
-  async function loadFamilyContext(userId: string) {
+  async function loadFamilyContext(_userId?: string) {
     if (!supabase) return
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('approved_at')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    const approved = !!profile?.approved_at
+    const { data, error } = await supabase.rpc('get_my_family_context')
+    if (error) {
+      setIsApproved(false)
+      setFamilyId(null)
+      setSharedItems([])
+      return
+    }
+    const ctx = data as { is_approved: boolean; family_id: string | null } | null
+    const approved = ctx?.is_approved ?? false
     setIsApproved(approved)
-
     if (!approved) {
       setFamilyId(null)
       setSharedItems([])
       return
     }
-
-    const { data: member } = await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle()
-
-    const nextFamilyId = member?.family_id ?? null
+    const nextFamilyId = ctx?.family_id ?? null
     setFamilyId(nextFamilyId)
     if (!nextFamilyId) setSharedItems([])
   }
@@ -436,18 +429,14 @@ export default function FullShoppingListPage() {
       return
     }
 
-    const { data: sessionData } = await supabase.auth.getSession()
-    const redeemedFamilyId = (await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', sessionData.session?.user?.id ?? '')
-      .limit(1)
-      .maybeSingle()).data?.family_id ?? null
+    // Re-fetch context via security-definer RPC (same auth path as redeem_invite_code)
+    const { data: ctxData } = await supabase.rpc('get_my_family_context')
+    const ctx = ctxData as { is_approved: boolean; family_id: string | null } | null
+    const redeemedFamilyId = ctx?.family_id ?? null
 
     setInviteCode('')
     setIsApproved(true)
     if (redeemedFamilyId) setFamilyId(redeemedFamilyId)
-    if (sessionUserId) await loadFamilyContext(sessionUserId)
     setAuthMessageKind('success')
     setAuthMessage('Invite redeemed. Collaboration is now active.')
     await handleSyncPersonalToShared(redeemedFamilyId ?? undefined)
