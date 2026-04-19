@@ -69,6 +69,7 @@ const DIFFICULTY_CONFIG: Record<
     obstacleCount: number
     collisionWidth: number
     scrollScale: number
+    playerAnchorY: number
   }
 > = {
   slow: {
@@ -89,6 +90,7 @@ const DIFFICULTY_CONFIG: Record<
     obstacleCount: 9,
     collisionWidth: 0.1,
     scrollScale: 1.95,
+    playerAnchorY: 68,
   },
   medium: {
     label: 'Medium',
@@ -108,6 +110,7 @@ const DIFFICULTY_CONFIG: Record<
     obstacleCount: 12,
     collisionWidth: 0.12,
     scrollScale: 2.15,
+    playerAnchorY: 66,
   },
   fast: {
     label: 'Fast',
@@ -127,6 +130,7 @@ const DIFFICULTY_CONFIG: Record<
     obstacleCount: 14,
     collisionWidth: 0.13,
     scrollScale: 2.35,
+    playerAnchorY: 64,
   },
 }
 
@@ -657,12 +661,29 @@ export default function MealRaceGame() {
                 'repeating-linear-gradient(180deg,transparent 0px,transparent 18px,rgba(255,255,255,0.1) 18px,rgba(255,255,255,0.1) 26px)',
             }}
           />
-          <div className="absolute top-3 left-0 right-0 text-center text-[9px] uppercase tracking-[0.3em] text-white/45 font-bold">Finish</div>
-          <div className="absolute top-8 left-0 right-0 h-2 bg-[repeating-conic-gradient(#fff_0%_25%,#000_0%_50%)] bg-[length:8px_8px] opacity-85" />
+
+          {(() => {
+            const finishY = DIFFICULTY_CONFIG[difficulty].playerAnchorY - (RACE_LENGTH - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
+            if (finishY < -10 || finishY > 108) return null
+            return (
+              <>
+                <div
+                  className="absolute left-0 right-0 h-2 bg-[repeating-conic-gradient(#fff_0%_25%,#000_0%_50%)] bg-[length:8px_8px] opacity-85"
+                  style={{ top: `${finishY}%` }}
+                />
+                <div
+                  className="absolute left-0 right-0 -translate-y-[14px] text-center text-[9px] uppercase tracking-[0.3em] text-white/45 font-bold"
+                  style={{ top: `${finishY}%` }}
+                >
+                  Finish
+                </div>
+              </>
+            )
+          })()}
 
           {obstacles.map(obs => {
-            const y = 84 - (obs.progress - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
-            if (y < -8 || y > 90) return null
+            const y = DIFFICULTY_CONFIG[difficulty].playerAnchorY - (obs.progress - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
+            if (y < -10 || y > 108) return null
             return (
               <div
                 key={obs.id}
@@ -677,8 +698,8 @@ export default function MealRaceGame() {
           })}
 
           {opponents.map(o => {
-            const y = 84 - (o.progress - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
-            if (y < -8 || y > 88) return null
+            const y = DIFFICULTY_CONFIG[difficulty].playerAnchorY - (o.progress - playerProgress) * DIFFICULTY_CONFIG[difficulty].scrollScale
+            if (y < -10 || y > 108) return null
             return (
               <div
                 key={o.id}
@@ -692,10 +713,10 @@ export default function MealRaceGame() {
           })}
 
           <div
-            className={`absolute bottom-5 -translate-x-1/2 transition-transform ${
+            className={`absolute -translate-x-1/2 -translate-y-1/2 transition-transform ${
               Date.now() < playerSlowUntil ? 'scale-95' : 'scale-100'
             }`}
-            style={{ left: `${playerX * 100}%` }}
+            style={{ left: `${playerX * 100}%`, top: `${DIFFICULTY_CONFIG[difficulty].playerAnchorY}%` }}
           >
             <div className="px-1.5 py-0.5 bg-[#b85476] border border-[#2b2b2b] text-[8px] font-bold tracking-widest text-[#f0ebe0] text-center mb-1">
               LILAH
