@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import Header from '@/components/Header'
 import { clearMealCart, getCartUpdatedEventName, getMealCart, type CartMeal } from '@/lib/meal-cart'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 interface CollatedItem {
   key: string
@@ -13,13 +14,28 @@ interface CollatedItem {
   variants: string[]
   recipes: string[]
   optionalIn: string[]
+  optionalNoteText?: string
+  isStaple: boolean
+}
+
+interface SharedItemRow {
+  id: string
+  ingredient_key: string
+  ingredient_name: string
+  quantity_text: string | null
+  category: string | null
+  is_staple: boolean
+  optional_note: string | null
+  contributed_recipes: string[] | null
+  checked: boolean
 }
 
 type SortMode = 'alpha' | 'category'
+type ListMode = 'personal' | 'shared'
 
 const CHECKED_KEY = 'full-shopping-checked-v1'
 const SORT_MODE_KEY = 'full-shopping-sort-v1'
-
+const MODE_KEY = 'full-shopping-mode-v1'
 const CATEGORY_ORDER = [
   'Vegetables & Fruit',
   'Meat & Seafood',
@@ -32,16 +48,8 @@ const CATEGORY_ORDER = [
   'Pantry & Other',
 ] as const
 
-const HOUSEHOLD_STAPLE_PATTERN = /(salt|pepper|olive oil|vegetable oil|sesame oil|soy sauce|honey|herb|spice|oregano|paprika|curry|vinegar|mustard|ketchup|worcestershire)/
-
-function looksOptional(ingredientVariant: string) {
-  const t = ingredientVariant.toLowerCase()
-  return /(optional|to serve|if using|to taste)/.test(t)
-}
-
-function isHouseholdStaple(name: string) {
-  return HOUSEHOLD_STAPLE_PATTERN.test(name.toLowerCase())
-}
+const HOUSEHOLD_STAPLE_PATTERN =
+  /(salt|pepper|olive oil|vegetable oil|sesame oil|soy sauce|honey|herb|spice|oregano|paprika|curry|vinegar|mustard|ketchup|worcestershire)/
 
 function normalizeIngredientName(ingredient: string) {
   return ingredient
@@ -58,7 +66,6 @@ function displayIngredientName(ingredient: string) {
 
 function resolveIngredientCategory(ingredientName: string) {
   const t = ingredientName.toLowerCase()
-
   if (/(chicken|beef|lamb|pork|sausage|mince|fish|salmon|prawn|tuna|bacon|pepperoni)/.test(t)) return 'Meat & Seafood'
   if (/(milk|cheese|mozzarella|parmesan|butter|cream|yoghurt|yogurt|egg)/.test(t)) return 'Dairy & Eggs'
   if (/(rice|pasta|spaghetti|linguine|penne|noodle|flour|grain|quinoa|couscous|oat)/.test(t)) return 'Rice, Pasta & Grains'
@@ -70,16 +77,19 @@ function resolveIngredientCategory(ingredientName: string) {
   return 'Pantry & Other'
 }
 
+function looksOptional(ingredientVariant: string) {
+  const t = ingredientVariant.toLowerCase()
+  return /(optional|to serve|if using|to taste)/.test(t)
+}
+
+function isHouseholdStaple(name: string) {
+  return HOUSEHOLD_STAPLE_PATTERN.test(name.toLowerCase())
+}
+
 function collateIngredients(meals: CartMeal[]): CollatedItem[] {
   const map = new Map<
     string,
-    {
-      name: string
-      count: number
-      recipes: Set<string>
-      optionalIn: Set<string>
-      variants: Set<string>
-    }
+    { name: string; count: number; recipes: Set<string>; optionalIn: Set<string>; variants: Set<string> }
   >()
 
   for (const meal of meals) {
@@ -112,36 +122,82 @@ function collateIngredients(meals: CartMeal[]): CollatedItem[] {
       recipes: Array.from(value.recipes).sort((a, b) => a.localeCompare(b)),
       optionalIn: Array.from(value.optionalIn).sort((a, b) => a.localeCompare(b)),
       variants: Array.from(value.variants),
+      isStaple: isHouseholdStaple(value.name),
     }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
+function collateFromShared(rows: SharedItemRow[]): CollatedItem[] {
+  return rows
+    .map((row) => ({
+      key: row.ingredient_key,
+      name: row.ingredient_name,
+      count: row.quantity_text?.startsWith('x') ? Number(row.quantity_text.slice(1)) || 1 : 1,
+      recipeCount: (row.contributed_recipes ?? []).length,
+      recipes: row.contributed_recipes ?? [],
+      optionalIn: [],
+      optionalNoteText: row.optional_note ?? undefined,
+      variants: [],
+      isStaple: row.is_staple,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function weekStartIso() {
+  const d = new Date()
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString().slice(0, 10)
+}
+
 export default function FullShoppingListPage() {
+  const [listMode, setListMode] = useState<ListMode>('personal')
   const [cartMeals, setCartMeals] = useState<CartMeal[]>([])
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [sortMode, setSortMode] = useState<SortMode>('category')
   const [hydrated, setHydrated] = useState(false)
 
+  const [inviteCode, setInviteCode] = useState('')
+  const [authMessage, setAuthMessage] = useState('')
+  const [authMessageKind, setAuthMessageKind] = useState<'error' | 'success'>('error')
+  const [authBusy, setAuthBusy] = useState(false)
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null)
+  const [isApproved, setIsApproved] = useState(false)
+  const [familyId, setFamilyId] = useState<string | null>(null)
+  const [sharedItems, setSharedItems] = useState<SharedItemRow[]>([])
+  const [sharedBusy, setSharedBusy] = useState(false)
+
+  const supabase = useMemo(() => {
+    try {
+      return createSupabaseBrowserClient()
+    } catch {
+      return null
+    }
+  }, [])
   useEffect(() => {
+    const update = () => setCartMeals(getMealCart())
+
     try {
       const raw = window.localStorage.getItem(CHECKED_KEY)
       if (raw) {
         const parsed = JSON.parse(raw) as string[]
         if (Array.isArray(parsed)) setChecked(new Set(parsed))
       }
+      const savedSort = window.localStorage.getItem(SORT_MODE_KEY)
+      if (savedSort === 'alpha' || savedSort === 'category') setSortMode(savedSort)
+      const savedMode = window.localStorage.getItem(MODE_KEY)
+      const urlMode = new URLSearchParams(window.location.search).get('mode')
+      if (urlMode === 'personal' || urlMode === 'shared') setListMode(urlMode)
+      else if (savedMode === 'personal' || savedMode === 'shared') setListMode(savedMode)
     } catch {
-      // ignore invalid local storage
+      // ignore local storage parse issues
     }
 
-    const savedSort = window.localStorage.getItem(SORT_MODE_KEY)
-    if (savedSort === 'alpha' || savedSort === 'category') {
-      setSortMode(savedSort)
-    }
-
-    const update = () => setCartMeals(getMealCart())
     update()
     setHydrated(true)
-
     window.addEventListener(getCartUpdatedEventName(), update)
     window.addEventListener('storage', update)
     return () => {
@@ -150,36 +206,162 @@ export default function FullShoppingListPage() {
     }
   }, [])
 
-  const items = useMemo(() => collateIngredients(cartMeals), [cartMeals])
-  const staples = useMemo(() => items.filter((item) => isHouseholdStaple(item.name)), [items])
-  const coreItems = useMemo(() => items.filter((item) => !isHouseholdStaple(item.name)), [items])
+  const personalItems = useMemo(() => collateIngredients(cartMeals), [cartMeals])
+  const collatedShared = useMemo(() => collateFromShared(sharedItems), [sharedItems])
+  const activeItems = listMode === 'shared' ? collatedShared : personalItems
+
+  const activeStaples = useMemo(
+    () => activeItems.filter((item) => item.isStaple),
+    [activeItems]
+  )
+  const activeCoreItems = useMemo(
+    () => activeItems.filter((item) => !item.isStaple),
+    [activeItems]
+  )
+
   const categories = useMemo(() => {
     const grouped = new Map<string, CollatedItem[]>()
-    for (const item of coreItems) {
+    for (const item of activeCoreItems) {
       const category = resolveIngredientCategory(item.name)
       const list = grouped.get(category) ?? []
       list.push(item)
       grouped.set(category, list)
     }
-    grouped.forEach((list) => {
-      list.sort((a, b) => a.name.localeCompare(b.name))
-    })
-    return CATEGORY_ORDER
-      .map((category) => ({ category, items: grouped.get(category) ?? [] }))
-      .filter((group) => group.items.length > 0)
-  }, [coreItems])
+    grouped.forEach((list) => list.sort((a, b) => a.name.localeCompare(b.name)))
+    return CATEGORY_ORDER.map((category) => ({ category, items: grouped.get(category) ?? [] })).filter(
+      (group) => group.items.length > 0
+    )
+  }, [activeCoreItems])
 
   useEffect(() => {
-    if (!hydrated) return
-    const validKeys = new Set(items.map((item) => item.key))
+    if (!hydrated || listMode !== 'personal') return
+    const validKeys = new Set(personalItems.map((item) => item.key))
     setChecked((prev) => {
       const next = new Set(Array.from(prev).filter((key) => validKeys.has(key)))
       window.localStorage.setItem(CHECKED_KEY, JSON.stringify(Array.from(next)))
       return next
     })
-  }, [items, hydrated])
+  }, [personalItems, hydrated, listMode])
 
-  function toggleItem(key: string) {
+  useEffect(() => {
+    if (!supabase) return
+    let mounted = true
+
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!mounted) return
+      setSessionUserId(data.session?.user?.id ?? null)
+      setSessionEmail(data.session?.user?.email ?? null)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessionUserId(session?.user?.id ?? null)
+      setSessionEmail(session?.user?.email ?? null)
+    })
+
+    return () => {
+      mounted = false
+      sub.subscription.unsubscribe()
+    }
+  }, [supabase])
+
+  async function loadFamilyContext(userId: string) {
+    if (!supabase) return
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('approved_at')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const approved = !!profile?.approved_at
+    setIsApproved(approved)
+
+    if (!approved) {
+      setFamilyId(null)
+      setSharedItems([])
+      return
+    }
+
+    const { data: member } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', userId)
+      .limit(1)
+      .maybeSingle()
+
+    const nextFamilyId = member?.family_id ?? null
+    setFamilyId(nextFamilyId)
+    if (!nextFamilyId) setSharedItems([])
+  }
+
+  useEffect(() => {
+    if (!sessionUserId) {
+      setIsApproved(false)
+      setFamilyId(null)
+      setSharedItems([])
+      return
+    }
+    loadFamilyContext(sessionUserId).catch(() => {
+      setAuthMessage('Could not load family context.')
+    })
+  }, [sessionUserId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function ensureSharedPlan(targetFamilyId?: string): Promise<string | null> {
+    const effectiveFamilyId = targetFamilyId ?? familyId
+    if (!supabase || !effectiveFamilyId) return null
+    const weekStart = weekStartIso()
+
+    const { data: existing } = await supabase
+      .from('weekly_plans')
+      .select('id')
+      .eq('family_id', effectiveFamilyId)
+      .eq('week_start', weekStart)
+      .limit(1)
+      .maybeSingle()
+
+    if (existing?.id) return existing.id
+
+    const { data: inserted, error } = await supabase
+      .from('weekly_plans')
+      .insert({ family_id: effectiveFamilyId, week_start: weekStart })
+      .select('id')
+      .single()
+
+    if (error) return null
+    return inserted.id as string
+  }
+
+  async function loadSharedItems(targetFamilyId?: string) {
+    const effectiveFamilyId = targetFamilyId ?? familyId
+    if (!supabase || !effectiveFamilyId || !isApproved) return
+    setSharedBusy(true)
+    const planId = await ensureSharedPlan(effectiveFamilyId)
+    if (!planId) {
+      setSharedBusy(false)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('shopping_items')
+      .select(
+        'id, ingredient_key, ingredient_name, quantity_text, category, is_staple, optional_note, contributed_recipes, checked'
+      )
+      .eq('plan_id', planId)
+      .order('ingredient_name', { ascending: true })
+
+    if (!error && data) setSharedItems(data as SharedItemRow[])
+    setSharedBusy(false)
+  }
+
+  useEffect(() => {
+    if (listMode !== 'shared' || !familyId || !isApproved) return
+    loadSharedItems().catch(() => setAuthMessage('Could not load shared checklist.'))
+    const id = window.setInterval(() => {
+      loadSharedItems().catch(() => null)
+    }, 4000)
+    return () => window.clearInterval(id)
+  }, [listMode, familyId, isApproved]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function togglePersonalItem(key: string) {
     setChecked((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
@@ -189,13 +371,143 @@ export default function FullShoppingListPage() {
     })
   }
 
+  async function toggleSharedItem(key: string) {
+    if (!supabase || !sessionUserId) return
+    const row = sharedItems.find((item) => item.ingredient_key === key)
+    if (!row) return
+    const nextChecked = !row.checked
+    await supabase
+      .from('shopping_items')
+      .update({
+        checked: nextChecked,
+        checked_by: nextChecked ? sessionUserId : null,
+        checked_at: nextChecked ? new Date().toISOString() : null,
+      })
+      .eq('id', row.id)
+    await loadSharedItems()
+  }
+
+  function isItemChecked(item: CollatedItem) {
+    if (listMode === 'shared') {
+      return !!sharedItems.find((row) => row.ingredient_key === item.key)?.checked
+    }
+    return checked.has(item.key)
+  }
+
+  async function handleSignInWithGoogle() {
+    if (!supabase) return
+    setAuthBusy(true)
+    setAuthMessage('')
+    const redirectTo = `${window.location.origin}/menu/shopping?mode=shared`
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    })
+    if (error) {
+      setAuthMessageKind('error')
+      setAuthMessage(error.message)
+      setAuthBusy(false)
+    }
+  }
+
+  async function handleSignOut() {
+    if (!supabase) return
+    setAuthBusy(true)
+    await supabase.auth.signOut()
+    setAuthBusy(false)
+    setAuthMessage('')
+    setAuthMessageKind('error')
+  }
+
+  async function handleRedeemInvite() {
+    if (!supabase) return
+    if (!inviteCode.trim()) return
+    setAuthBusy(true)
+    setAuthMessage('')
+    setAuthMessageKind('error')
+    const { error } = await supabase.rpc('redeem_invite_code', {
+      input_code: inviteCode.trim(),
+      desired_family_name: 'Family',
+    })
+    if (error) {
+      setAuthMessageKind('error')
+      setAuthMessage(error.message)
+      setAuthBusy(false)
+      return
+    }
+
+    const { data: sessionData } = await supabase.auth.getSession()
+    const redeemedFamilyId = (await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', sessionData.session?.user?.id ?? '')
+      .limit(1)
+      .maybeSingle()).data?.family_id ?? null
+
+    setInviteCode('')
+    setIsApproved(true)
+    if (redeemedFamilyId) setFamilyId(redeemedFamilyId)
+    if (sessionUserId) await loadFamilyContext(sessionUserId)
+    setAuthMessageKind('success')
+    setAuthMessage('Invite redeemed. Collaboration is now active.')
+    await handleSyncPersonalToShared(redeemedFamilyId ?? undefined)
+    await loadSharedItems(redeemedFamilyId ?? undefined)
+    setAuthBusy(false)
+  }
+
+  async function handleSyncPersonalToShared(targetFamilyId?: string) {
+    const effectiveFamilyId = targetFamilyId ?? familyId
+    if (!supabase || !effectiveFamilyId) return
+    setSharedBusy(true)
+    const planId = await ensureSharedPlan(effectiveFamilyId)
+    if (!planId) {
+      setSharedBusy(false)
+      return
+    }
+
+    const { data: existingRows } = await supabase
+      .from('shopping_items')
+      .select('ingredient_key, checked, checked_by, checked_at')
+      .eq('plan_id', planId)
+
+    const existingMap = new Map(
+      (existingRows ?? []).map((row) => [row.ingredient_key as string, row])
+    )
+
+    const payload = personalItems.map((item) => {
+      const existing = existingMap.get(item.key)
+      return {
+        plan_id: planId,
+        ingredient_key: item.key,
+        ingredient_name: item.name,
+        quantity_text: item.count > 1 ? `x${item.count}` : null,
+        category: item.isStaple ? 'Household Staples' : resolveIngredientCategory(item.name),
+        is_staple: item.isStaple,
+        optional_note: item.optionalIn.length > 0 ? `Can be left off in: ${item.optionalIn.join(', ')}` : null,
+        contributed_recipes: item.recipes,
+        checked: existing?.checked ?? false,
+        checked_by: existing?.checked_by ?? null,
+        checked_at: existing?.checked_at ?? null,
+      }
+    })
+
+    await supabase.from('shopping_items').upsert(payload, { onConflict: 'plan_id,ingredient_key' })
+    await loadSharedItems(effectiveFamilyId)
+    setSharedBusy(false)
+  }
+
   function handleSetSortMode(mode: SortMode) {
     setSortMode(mode)
     window.localStorage.setItem(SORT_MODE_KEY, mode)
   }
 
+  function handleSetListMode(mode: ListMode) {
+    setListMode(mode)
+    window.localStorage.setItem(MODE_KEY, mode)
+  }
+
   function IngredientRow({ item }: { item: CollatedItem }) {
-    const isChecked = checked.has(item.key)
+    const isChecked = isItemChecked(item)
     return (
       <div
         key={item.key}
@@ -207,7 +519,7 @@ export default function FullShoppingListPage() {
           <input
             type="checkbox"
             checked={isChecked}
-            onChange={() => toggleItem(item.key)}
+            onChange={() => (listMode === 'shared' ? toggleSharedItem(item.key) : togglePersonalItem(item.key))}
             className="mt-1 w-4 h-4 accent-[#b85476] flex-shrink-0 cursor-pointer"
           />
           <div className="flex-1 min-w-0">
@@ -215,18 +527,17 @@ export default function FullShoppingListPage() {
               {item.name}
               {item.count > 1 ? ` ×${item.count}` : ''}
             </p>
-            <p className="text-xs text-[#2b2b2b]/55 mt-1">
-              Contributes to: {item.recipes.join(', ')}
-            </p>
+            {item.recipes.length > 0 && (
+              <p className="text-xs text-[#2b2b2b]/55 mt-1">Contributes to: {item.recipes.join(', ')}</p>
+            )}
             {item.optionalIn.length > 0 && (
-              <p className="text-xs text-[#2b2b2b]/55 mt-1">
-                Can be left off in: {item.optionalIn.join(', ')}
-              </p>
+              <p className="text-xs text-[#2b2b2b]/55 mt-1">Can be left off in: {item.optionalIn.join(', ')}</p>
+            )}
+            {!!item.optionalNoteText && (
+              <p className="text-xs text-[#2b2b2b]/55 mt-1">{item.optionalNoteText}</p>
             )}
             {!isChecked && item.variants.length > 0 && (
-              <p className="text-xs text-[#7a5a90] mt-2">
-                e.g. {item.variants.slice(0, 2).join(' • ')}
-              </p>
+              <p className="text-xs text-[#7a5a90] mt-2">e.g. {item.variants.slice(0, 2).join(' • ')}</p>
             )}
           </div>
         </label>
@@ -246,29 +557,141 @@ export default function FullShoppingListPage() {
           >
             ← Back to Menu
           </Link>
-          <button
-            onClick={() => {
-              clearMealCart()
-              setChecked(new Set())
-              window.localStorage.setItem(CHECKED_KEY, JSON.stringify([]))
-            }}
-            className="inline-block px-4 py-2 bg-[#f0ebe0] text-[#2b2b2b]/70 font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b]"
-          >
-            Clear Cart
-          </button>
+          {listMode === 'personal' ? (
+            <button
+              onClick={() => {
+                clearMealCart()
+                setChecked(new Set())
+                window.localStorage.setItem(CHECKED_KEY, JSON.stringify([]))
+              }}
+              className="inline-block px-4 py-2 bg-[#f0ebe0] text-[#2b2b2b]/70 font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b]"
+            >
+              Clear Cart
+            </button>
+          ) : (
+            <button
+              onClick={() => loadSharedItems()}
+              className="inline-block px-4 py-2 bg-[#f0ebe0] text-[#2b2b2b]/70 font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b]"
+            >
+              Refresh Shared
+            </button>
+          )}
         </div>
 
         <div className="bg-[#b85476] px-4 py-3 border-2 border-[#2b2b2b] mb-4">
-          <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">
-            Full Shopping List
-          </span>
+          <span className="text-[#f0ebe0] font-bold uppercase tracking-[0.2em] text-sm">Full Shopping List</span>
         </div>
 
-        <div className="border-2 border-[#2b2b2b] bg-white shadow-[4px_4px_0px_#2b2b2b] px-4 py-3 mb-4">
-          <p className="text-xs text-[#2b2b2b]/70 uppercase tracking-[0.12em]">
-            {cartMeals.length} recipes in cart • {coreItems.length} combined ingredients
-          </p>
+        <div className="border-2 border-[#2b2b2b] bg-white shadow-[4px_4px_0px_#2b2b2b] px-4 py-3 mb-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-[#2b2b2b]/70 uppercase tracking-[0.12em]">
+              {listMode === 'personal'
+                ? `${cartMeals.length} recipes in cart • ${activeCoreItems.length} combined ingredients`
+                : `${activeCoreItems.length} shared ingredients for this week`}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleSetListMode('personal')}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] ${
+                  listMode === 'personal' ? 'bg-[#b85476] text-[#f0ebe0]' : 'bg-[#f0ebe0] text-[#2b2b2b]'
+                }`}
+              >
+                Personal
+              </button>
+              <button
+                onClick={() => handleSetListMode('shared')}
+                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] ${
+                  listMode === 'shared' ? 'bg-[#b85476] text-[#f0ebe0]' : 'bg-[#f0ebe0] text-[#2b2b2b]'
+                }`}
+              >
+                Collaboration
+              </button>
+            </div>
+          </div>
         </div>
+
+        {listMode === 'shared' && (
+          <div className="border-2 border-[#2b2b2b] bg-white px-4 py-4 mb-4">
+            {!supabase && (
+              <p className="text-xs text-[#2b2b2b]/70">
+                Supabase is not configured in this deployment (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+              </p>
+            )}
+            {supabase && sessionUserId && (
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-3 pb-3 border-b border-[#2b2b2b]/20">
+                <p className="text-xs text-[#2b2b2b]/70">
+                  Signed in{sessionEmail ? ` as ${sessionEmail}` : ''}.
+                </p>
+                <button
+                  onClick={handleSignOut}
+                  disabled={authBusy}
+                  className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+            {supabase && !sessionUserId && (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs text-[#2b2b2b]/70">Sign in with OAuth to use the shared family checklist.</p>
+                <button
+                  onClick={handleSignInWithGoogle}
+                  disabled={authBusy}
+                  className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                >
+                  Sign in with Google
+                </button>
+              </div>
+            )}
+            {supabase && sessionUserId && !isApproved && (
+              <div className="space-y-2">
+                <p className="text-xs text-[#2b2b2b]/70">
+                  You’re signed in. Enter your invite code to unlock collaboration.
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value)}
+                    placeholder="Invite code"
+                    className="px-3 py-2 border-2 border-[#2b2b2b] text-xs flex-1 min-w-[180px]"
+                  />
+                  <button
+                    onClick={handleRedeemInvite}
+                    disabled={authBusy || !inviteCode.trim()}
+                    className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                  >
+                    Redeem
+                  </button>
+                </div>
+              </div>
+            )}
+            {supabase && sessionUserId && isApproved && (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-xs text-[#2b2b2b]/70">
+                  Collaboration is active. Sync your personal cart into the shared weekly checklist.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSyncPersonalToShared()}
+                    disabled={sharedBusy}
+                    className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                  >
+                    Sync Personal → Shared
+                  </button>
+                </div>
+              </div>
+            )}
+            {authMessage && (
+              <p
+                className={`text-xs mt-3 ${
+                  authMessageKind === 'success' ? 'text-[#3f7f53]' : 'text-[#b85476]'
+                }`}
+              >
+                {authMessage}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center gap-2 mb-4">
           <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#2b2b2b]/60">Sort</span>
@@ -290,45 +713,46 @@ export default function FullShoppingListPage() {
           </button>
         </div>
 
-        {items.length === 0 ? (
+        {activeItems.length === 0 ? (
           <div className="border-2 border-[#2b2b2b] bg-white p-6">
             <p className="text-sm text-[#2b2b2b]/70">
-              Your cart is empty. Add meals from the menu and your combined list will appear here.
+              {listMode === 'shared'
+                ? 'No shared items yet. Sync your personal cart to create the weekly shared list.'
+                : 'Your cart is empty. Add meals from the menu and your combined list will appear here.'}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
             {sortMode === 'alpha' && (
               <div className="space-y-2">
-                {coreItems.map((item) => (
+                {activeCoreItems.map((item) => (
                   <IngredientRow key={item.key} item={item} />
                 ))}
               </div>
             )}
 
-            {sortMode === 'category' && categories.map((group) => (
-              <section key={group.category}>
-                <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2b2b2b]/65 mb-2">
-                  {group.category}
-                </h3>
-                <div className="space-y-2">
-                  {group.items.map((item) => (
-                    <IngredientRow key={item.key} item={item} />
-                  ))}
-                </div>
-              </section>
-            ))}
+            {sortMode === 'category' &&
+              categories.map((group) => (
+                <section key={group.category}>
+                  <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2b2b2b]/65 mb-2">{group.category}</h3>
+                  <div className="space-y-2">
+                    {group.items.map((item) => (
+                      <IngredientRow key={item.key} item={item} />
+                    ))}
+                  </div>
+                </section>
+              ))}
 
-            {staples.length > 0 && (
+            {activeStaples.length > 0 && (
               <section>
                 <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#2b2b2b]/65 mb-2">
                   Household Staples (likely already have)
                 </h3>
                 <p className="text-xs text-[#2b2b2b]/55 mb-2">
-                  We’ve grouped common pantry basics here so you can decide if you still need to buy them.
+                  Common pantry basics are grouped here so you can decide if you still need to buy them.
                 </p>
                 <div className="space-y-2">
-                  {staples.map((item) => (
+                  {activeStaples.map((item) => (
                     <IngredientRow key={item.key} item={item} />
                   ))}
                 </div>
@@ -339,11 +763,13 @@ export default function FullShoppingListPage() {
 
         <div className="border-2 border-[#2b2b2b] bg-[#7a5a90] p-4 mt-6">
           <p className="text-[#f0ebe0] text-xs font-bold uppercase tracking-[0.1em]">
-            {items.length === 0
-              ? 'Add meals to cart from the menu.'
-              : checked.size === items.length
-                ? '✓ Everything collected.'
-                : `${checked.size} of ${items.length} collated items collected.`}
+            {activeItems.length === 0
+              ? 'Add meals to cart or sync to shared list.'
+              : listMode === 'shared'
+              ? `${activeItems.filter((item) => isItemChecked(item)).length} of ${activeItems.length} shared items collected.`
+              : checked.size === activeItems.length
+              ? '✓ Everything collected.'
+              : `${checked.size} of ${activeItems.length} collated items collected.`}
           </p>
         </div>
       </main>
