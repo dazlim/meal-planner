@@ -32,7 +32,27 @@ interface SharedItemRow {
 
 type SortMode = 'alpha' | 'category'
 type ListMode = 'personal' | 'shared'
-type SyncMode = 'merge' | 'replace'
+type SyncMode = 'merge' | 'replace' | 'prompt'
+
+interface SyncPayloadRow {
+  plan_id: string
+  ingredient_key: string
+  ingredient_name: string
+  quantity_text: string | null
+  category: string
+  is_staple: boolean
+  optional_note: string | null
+  contributed_recipes: string[]
+  checked: boolean
+  checked_by: string | null
+  checked_at: string | null
+}
+
+interface PendingSyncDecision {
+  effectiveFamilyId: string
+  payload: SyncPayloadRow[]
+  staleIds: string[]
+}
 
 const CHECKED_KEY = 'full-shopping-checked-v1'
 const SORT_MODE_KEY = 'full-shopping-sort-v1'
@@ -171,6 +191,7 @@ export default function FullShoppingListPage() {
   const [familyId, setFamilyId] = useState<string | null>(null)
   const [sharedItems, setSharedItems] = useState<SharedItemRow[]>([])
   const [sharedBusy, setSharedBusy] = useState(false)
+  const [pendingSyncDecision, setPendingSyncDecision] = useState<PendingSyncDecision | null>(null)
 
   const supabase = useMemo(() => {
     try {
@@ -472,7 +493,7 @@ export default function FullShoppingListPage() {
       (existingRows ?? []).map((row) => [row.ingredient_key as string, row])
     )
 
-    const payload = personalItems.map((item) => {
+    const payload: SyncPayloadRow[] = personalItems.map((item) => {
       const existing = existingMap.get(item.key)
       return {
         plan_id: planId,
@@ -489,6 +510,17 @@ export default function FullShoppingListPage() {
       }
     })
 
+    const payloadKeys = new Set(payload.map((row) => row.ingredient_key))
+    const staleIds = (existingRows ?? [])
+      .filter((row) => !payloadKeys.has(row.ingredient_key as string))
+      .map((row) => row.id as string)
+
+    if (mode === 'prompt' && staleIds.length > 0) {
+      setPendingSyncDecision({ effectiveFamilyId, payload, staleIds })
+      setSharedBusy(false)
+      return
+    }
+
     const { error: upsertError } = await supabase
       .from('shopping_items')
       .upsert(payload, { onConflict: 'plan_id,ingredient_key' })
@@ -503,11 +535,6 @@ export default function FullShoppingListPage() {
 
     if (mode === 'replace') {
       // Replace mode: keep shared exactly aligned with personal by pruning stale rows.
-      const payloadKeys = new Set(payload.map((row) => row.ingredient_key))
-      const staleIds = (existingRows ?? [])
-        .filter((row) => !payloadKeys.has(row.ingredient_key as string))
-        .map((row) => row.id as string)
-
       if (staleIds.length > 0) {
         const { error: deleteError } = await supabase
           .from('shopping_items')
@@ -533,17 +560,46 @@ export default function FullShoppingListPage() {
     setSharedBusy(false)
   }
 
-  function handleReplaceShared() {
-    const ok = window.confirm(
-      'Replace shared list with your personal list?\n\nThis will remove shared-only items not in your personal list.'
-    )
-    if (!ok) return
-    handleSyncPersonalToShared(undefined, 'replace').catch(() => {
+  async function handleConfirmPendingSync(mode: 'merge' | 'replace') {
+    const pending = pendingSyncDecision
+    if (!supabase || !pending) return
+    setPendingSyncDecision(null)
+    setSharedBusy(true)
+
+    const { error: upsertError } = await supabase
+      .from('shopping_items')
+      .upsert(pending.payload, { onConflict: 'plan_id,ingredient_key' })
+
+    if (upsertError) {
+      setAuthMessage(`Sync failed: ${upsertError.message}`)
       setAuthMessageKind('error')
-      setAuthMessage('Replace failed. Please try again.')
       setAuthOpen(true)
       setSharedBusy(false)
-    })
+      return
+    }
+
+    if (mode === 'replace' && pending.staleIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('shopping_items')
+        .delete()
+        .in('id', pending.staleIds)
+
+      if (deleteError) {
+        setAuthMessage(`Replace partially completed: ${deleteError.message}`)
+        setAuthMessageKind('error')
+        setAuthOpen(true)
+      }
+    }
+
+    await loadSharedItems(pending.effectiveFamilyId)
+    setAuthMessageKind('success')
+    setAuthMessage(
+      mode === 'replace'
+        ? `Replaced shared list with ${pending.payload.length} personal items.`
+        : `Merged ${pending.payload.length} personal items into shared list.`
+    )
+    setAuthOpen(true)
+    setSharedBusy(false)
   }
 
   function handleSetSortMode(mode: SortMode) {
@@ -649,20 +705,11 @@ export default function FullShoppingListPage() {
               </button>
               {supabase && isApproved && listMode === 'shared' && (
                 <button
-                  onClick={() => handleSyncPersonalToShared()}
+                  onClick={() => handleSyncPersonalToShared(undefined, 'prompt')}
                   disabled={sharedBusy}
                   className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] bg-[#7a5a90] text-[#f0ebe0]"
                 >
-                  Sync (Merge)
-                </button>
-              )}
-              {supabase && isApproved && listMode === 'shared' && (
-                <button
-                  onClick={handleReplaceShared}
-                  disabled={sharedBusy}
-                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] bg-[#b85476] text-[#f0ebe0]"
-                >
-                  Replace Shared
+                  Sync
                 </button>
               )}
             </div>
@@ -827,6 +874,49 @@ export default function FullShoppingListPage() {
           </p>
         </div>
       </main>
+
+      {pendingSyncDecision && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close sync options"
+            className="absolute inset-0 bg-[#2b2b2b]/40"
+            onClick={() => setPendingSyncDecision(null)}
+          />
+          <div className="relative w-full max-w-lg border-2 border-[#2b2b2b] bg-[#f0ebe0] shadow-[6px_6px_0px_#2b2b2b] p-5">
+            <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-[#2b2b2b] mb-2">
+              Sync Options
+            </h3>
+            <p className="text-xs text-[#2b2b2b]/75 mb-4">
+              Your personal list differs from shared by {pendingSyncDecision.staleIds.length} shared-only item
+              {pendingSyncDecision.staleIds.length === 1 ? '' : 's'}.
+            </p>
+            <p className="text-xs text-[#2b2b2b]/75 mb-4">
+              Choose <strong>Merge</strong> to keep shared extras, or <strong>Replace</strong> to make shared exactly match your personal list.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button
+                onClick={() => setPendingSyncDecision(null)}
+                className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleConfirmPendingSync('merge')}
+                className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+              >
+                Merge
+              </button>
+              <button
+                onClick={() => handleConfirmPendingSync('replace')}
+                className="px-3 py-2 bg-[#b85476] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+              >
+                Replace
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
