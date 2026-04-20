@@ -32,6 +32,7 @@ interface SharedItemRow {
 
 type SortMode = 'alpha' | 'category'
 type ListMode = 'personal' | 'shared'
+type SyncMode = 'merge' | 'replace'
 
 const CHECKED_KEY = 'full-shopping-checked-v1'
 const SORT_MODE_KEY = 'full-shopping-sort-v1'
@@ -449,7 +450,7 @@ export default function FullShoppingListPage() {
     setAuthBusy(false)
   }
 
-  async function handleSyncPersonalToShared(targetFamilyId?: string) {
+  async function handleSyncPersonalToShared(targetFamilyId?: string, mode: SyncMode = 'merge') {
     const effectiveFamilyId = targetFamilyId ?? familyId
     if (!supabase || !effectiveFamilyId) return
     setSharedBusy(true)
@@ -500,30 +501,49 @@ export default function FullShoppingListPage() {
       return
     }
 
-    // Keep shared list aligned with the current personal cart by pruning stale rows.
-    const payloadKeys = new Set(payload.map((row) => row.ingredient_key))
-    const staleIds = (existingRows ?? [])
-      .filter((row) => !payloadKeys.has(row.ingredient_key as string))
-      .map((row) => row.id as string)
+    if (mode === 'replace') {
+      // Replace mode: keep shared exactly aligned with personal by pruning stale rows.
+      const payloadKeys = new Set(payload.map((row) => row.ingredient_key))
+      const staleIds = (existingRows ?? [])
+        .filter((row) => !payloadKeys.has(row.ingredient_key as string))
+        .map((row) => row.id as string)
 
-    if (staleIds.length > 0) {
-      const { error: deleteError } = await supabase
-        .from('shopping_items')
-        .delete()
-        .in('id', staleIds)
+      if (staleIds.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('shopping_items')
+          .delete()
+          .in('id', staleIds)
 
-      if (deleteError) {
-        setAuthMessage(`Sync partially completed: ${deleteError.message}`)
-        setAuthMessageKind('error')
-        setAuthOpen(true)
+        if (deleteError) {
+          setAuthMessage(`Replace partially completed: ${deleteError.message}`)
+          setAuthMessageKind('error')
+          setAuthOpen(true)
+        }
       }
     }
 
     await loadSharedItems(effectiveFamilyId)
     setAuthMessageKind('success')
-    setAuthMessage(`Synced ${payload.length} items to shared list.`)
+    setAuthMessage(
+      mode === 'replace'
+        ? `Replaced shared list with ${payload.length} personal items.`
+        : `Merged ${payload.length} personal items into shared list.`
+    )
     setAuthOpen(true)
     setSharedBusy(false)
+  }
+
+  function handleReplaceShared() {
+    const ok = window.confirm(
+      'Replace shared list with your personal list?\n\nThis will remove shared-only items not in your personal list.'
+    )
+    if (!ok) return
+    handleSyncPersonalToShared(undefined, 'replace').catch(() => {
+      setAuthMessageKind('error')
+      setAuthMessage('Replace failed. Please try again.')
+      setAuthOpen(true)
+      setSharedBusy(false)
+    })
   }
 
   function handleSetSortMode(mode: SortMode) {
@@ -633,7 +653,16 @@ export default function FullShoppingListPage() {
                   disabled={sharedBusy}
                   className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] bg-[#7a5a90] text-[#f0ebe0]"
                 >
-                  Sync
+                  Sync (Merge)
+                </button>
+              )}
+              {supabase && isApproved && listMode === 'shared' && (
+                <button
+                  onClick={handleReplaceShared}
+                  disabled={sharedBusy}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] bg-[#b85476] text-[#f0ebe0]"
+                >
+                  Replace Shared
                 </button>
               )}
             </div>
