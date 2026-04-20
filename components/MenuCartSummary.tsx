@@ -63,7 +63,7 @@ export default function MenuCartSummary() {
     if (!supabase) return
     setAuthBusy(true)
     await supabase.auth.signOut()
-    setAuthBusy(false)
+    window.location.reload()
   }
 
   return (

@@ -92,7 +92,7 @@ export default function MenuPlanActions() {
     if (!supabase) return
     setBusy(true)
     setMessage('')
-    const redirectTo = `${window.location.origin}/menu`
+    const redirectTo = `${window.location.origin}/menu/shopping?mode=shared`
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
