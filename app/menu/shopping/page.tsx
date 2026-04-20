@@ -320,7 +320,11 @@ export default function FullShoppingListPage() {
       .select('id')
       .single()
 
-    if (error) return null
+    if (error) {
+      setAuthMessage(`Plan error: ${error.message}`)
+      setAuthMessageKind('error')
+      return null
+    }
     return inserted.id as string
   }
 
@@ -449,8 +453,11 @@ export default function FullShoppingListPage() {
     const effectiveFamilyId = targetFamilyId ?? familyId
     if (!supabase || !effectiveFamilyId) return
     setSharedBusy(true)
+    setAuthMessage('')
+
     const planId = await ensureSharedPlan(effectiveFamilyId)
     if (!planId) {
+      setAuthOpen(true)
       setSharedBusy(false)
       return
     }
@@ -481,7 +488,18 @@ export default function FullShoppingListPage() {
       }
     })
 
-    await supabase.from('shopping_items').upsert(payload, { onConflict: 'plan_id,ingredient_key' })
+    const { error: upsertError } = await supabase
+      .from('shopping_items')
+      .upsert(payload, { onConflict: 'plan_id,ingredient_key' })
+
+    if (upsertError) {
+      setAuthMessage(`Sync failed: ${upsertError.message}`)
+      setAuthMessageKind('error')
+      setAuthOpen(true)
+      setSharedBusy(false)
+      return
+    }
+
     await loadSharedItems(effectiveFamilyId)
     setSharedBusy(false)
   }
