@@ -464,7 +464,7 @@ export default function FullShoppingListPage() {
 
     const { data: existingRows } = await supabase
       .from('shopping_items')
-      .select('ingredient_key, checked, checked_by, checked_at')
+      .select('id, ingredient_key, checked, checked_by, checked_at')
       .eq('plan_id', planId)
 
     const existingMap = new Map(
@@ -500,7 +500,29 @@ export default function FullShoppingListPage() {
       return
     }
 
+    // Keep shared list aligned with the current personal cart by pruning stale rows.
+    const payloadKeys = new Set(payload.map((row) => row.ingredient_key))
+    const staleIds = (existingRows ?? [])
+      .filter((row) => !payloadKeys.has(row.ingredient_key as string))
+      .map((row) => row.id as string)
+
+    if (staleIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('shopping_items')
+        .delete()
+        .in('id', staleIds)
+
+      if (deleteError) {
+        setAuthMessage(`Sync partially completed: ${deleteError.message}`)
+        setAuthMessageKind('error')
+        setAuthOpen(true)
+      }
+    }
+
     await loadSharedItems(effectiveFamilyId)
+    setAuthMessageKind('success')
+    setAuthMessage(`Synced ${payload.length} items to shared list.`)
+    setAuthOpen(true)
     setSharedBusy(false)
   }
 
