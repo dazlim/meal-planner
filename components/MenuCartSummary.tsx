@@ -83,12 +83,6 @@ export default function MenuCartSummary() {
             <span className="hidden sm:inline text-[9px] uppercase tracking-[0.1em] text-[#2b2b2b]/55">
               Signed in
             </span>
-            <Link
-              href="/menu/shopping?mode=shared"
-              className="px-3 py-2 bg-[#b85476] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-            >
-              Shared List
-            </Link>
             <button
               onClick={handleSignOut}
               disabled={authBusy}
