@@ -159,6 +159,7 @@ export default function FullShoppingListPage() {
   const [sortMode, setSortMode] = useState<SortMode>('category')
   const [hydrated, setHydrated] = useState(false)
 
+  const [authOpen, setAuthOpen] = useState(false)
   const [inviteCode, setInviteCode] = useState('')
   const [authMessage, setAuthMessage] = useState('')
   const [authMessageKind, setAuthMessageKind] = useState<'error' | 'success'>('error')
@@ -546,25 +547,16 @@ export default function FullShoppingListPage() {
           >
             ← Back to Menu
           </Link>
-          {listMode === 'personal' ? (
-            <button
-              onClick={() => {
-                clearMealCart()
-                setChecked(new Set())
-                window.localStorage.setItem(CHECKED_KEY, JSON.stringify([]))
-              }}
-              className="inline-block px-4 py-2 bg-[#f0ebe0] text-[#2b2b2b]/70 font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b]"
-            >
-              Clear Cart
-            </button>
-          ) : (
-            <button
-              onClick={() => loadSharedItems()}
-              className="inline-block px-4 py-2 bg-[#f0ebe0] text-[#2b2b2b]/70 font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b]"
-            >
-              Refresh Shared
-            </button>
-          )}
+          <button
+            onClick={() => {
+              clearMealCart()
+              setChecked(new Set())
+              window.localStorage.setItem(CHECKED_KEY, JSON.stringify([]))
+            }}
+            className="inline-block px-4 py-2 bg-[#f0ebe0] text-[#2b2b2b]/70 font-bold uppercase tracking-[0.15em] text-sm border-2 border-[#2b2b2b]"
+          >
+            Clear Cart
+          </button>
         </div>
 
         <div className="bg-[#b85476] px-4 py-3 border-2 border-[#2b2b2b] mb-4">
@@ -578,7 +570,7 @@ export default function FullShoppingListPage() {
                 ? `${cartMeals.length} recipes in cart • ${activeCoreItems.length} combined ingredients`
                 : `${activeCoreItems.length} shared ingredients for this week`}
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => handleSetListMode('personal')}
                 className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] ${
@@ -595,89 +587,93 @@ export default function FullShoppingListPage() {
               >
                 Collaboration
               </button>
+              {supabase && isApproved && listMode === 'shared' && (
+                <button
+                  onClick={() => handleSyncPersonalToShared()}
+                  disabled={sharedBusy}
+                  className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b] bg-[#7a5a90] text-[#f0ebe0]"
+                >
+                  Sync
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {listMode === 'shared' && (
-          <div className="border-2 border-[#2b2b2b] bg-white px-4 py-4 mb-4">
-            {!supabase && (
-              <p className="text-xs text-[#2b2b2b]/70">
-                Supabase is not configured in this deployment (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
-              </p>
-            )}
-            {supabase && sessionUserId && (
-              <div className="flex items-center justify-between gap-2 flex-wrap mb-3 pb-3 border-b border-[#2b2b2b]/20">
+          <div className="border-2 border-[#2b2b2b] bg-white mb-4">
+            {!supabase ? (
+              <div className="px-4 py-3">
                 <p className="text-xs text-[#2b2b2b]/70">
-                  Signed in{sessionEmail ? ` as ${sessionEmail}` : ''}.
+                  Supabase is not configured in this deployment.
                 </p>
+              </div>
+            ) : (
+              <>
                 <button
-                  onClick={handleSignOut}
-                  disabled={authBusy}
-                  className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                  onClick={() => setAuthOpen((o) => !o)}
+                  className="w-full flex items-center justify-between px-4 py-3"
                 >
-                  Sign out
+                  <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#2b2b2b]/70">
+                    {sessionEmail ? `Signed in as ${sessionEmail}` : 'Account'}
+                  </span>
+                  <span className="text-[#2b2b2b]/40 text-xs">{authOpen ? '\u25b2' : '\u25bc'}</span>
                 </button>
-              </div>
-            )}
-            {supabase && !sessionUserId && (
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs text-[#2b2b2b]/70">Sign in with OAuth to use the shared family checklist.</p>
-                <button
-                  onClick={handleSignInWithGoogle}
-                  disabled={authBusy}
-                  className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-                >
-                  Sign in with Google
-                </button>
-              </div>
-            )}
-            {supabase && sessionUserId && !isApproved && (
-              <div className="space-y-2">
-                <p className="text-xs text-[#2b2b2b]/70">
-                  You’re signed in. Enter your invite code to unlock collaboration.
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  <input
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value)}
-                    placeholder="Invite code"
-                    className="px-3 py-2 border-2 border-[#2b2b2b] text-xs flex-1 min-w-[180px]"
-                  />
-                  <button
-                    onClick={handleRedeemInvite}
-                    disabled={authBusy || !inviteCode.trim()}
-                    className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-                  >
-                    Redeem
-                  </button>
-                </div>
-              </div>
-            )}
-            {supabase && sessionUserId && isApproved && (
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <p className="text-xs text-[#2b2b2b]/70">
-                  Collaboration is active. Sync your personal cart into the shared weekly checklist.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleSyncPersonalToShared()}
-                    disabled={sharedBusy}
-                    className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
-                  >
-                    Sync Personal → Shared
-                  </button>
-                </div>
-              </div>
-            )}
-            {authMessage && (
-              <p
-                className={`text-xs mt-3 ${
-                  authMessageKind === 'success' ? 'text-[#3f7f53]' : 'text-[#b85476]'
-                }`}
-              >
-                {authMessage}
-              </p>
+                {authOpen && (
+                  <div className="px-4 pb-4 border-t border-[#2b2b2b]/20 pt-3 space-y-3">
+                    {sessionUserId ? (
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <p className="text-xs text-[#2b2b2b]/70">
+                          Signed in{sessionEmail ? ` as ${sessionEmail}` : ''}.
+                        </p>
+                        <button
+                          onClick={handleSignOut}
+                          disabled={authBusy}
+                          className="px-3 py-2 bg-[#f0ebe0] text-[#2b2b2b] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                        >
+                          Sign out
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <p className="text-xs text-[#2b2b2b]/70">Sign in with Google to use the shared checklist.</p>
+                        <button
+                          onClick={handleSignInWithGoogle}
+                          disabled={authBusy}
+                          className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                        >
+                          Sign in with Google
+                        </button>
+                      </div>
+                    )}
+                    {sessionUserId && !isApproved && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-[#2b2b2b]/70">Enter your invite code to unlock collaboration.</p>
+                        <div className="flex gap-2 flex-wrap">
+                          <input
+                            value={inviteCode}
+                            onChange={(e) => setInviteCode(e.target.value)}
+                            placeholder="Invite code"
+                            className="px-3 py-2 border-2 border-[#2b2b2b] text-xs flex-1 min-w-[180px]"
+                          />
+                          <button
+                            onClick={handleRedeemInvite}
+                            disabled={authBusy || !inviteCode.trim()}
+                            className="px-3 py-2 bg-[#7a5a90] text-[#f0ebe0] text-[10px] font-bold uppercase tracking-[0.12em] border-2 border-[#2b2b2b]"
+                          >
+                            Redeem
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {authMessage && (
+                      <p className={`text-xs ${authMessageKind === 'success' ? 'text-[#3f7f53]' : 'text-[#b85476]'}`}>
+                        {authMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
