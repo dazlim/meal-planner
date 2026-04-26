@@ -272,6 +272,44 @@ export const mealAlternatives: Record<string, CookingMethod[]> = {
     },
   ],
 
+  'weeknight-chicken-cacciatore': [
+    {
+      method: 'pressure-cooker',
+      label: 'Pressure Cooker',
+      icon: '⚡',
+      note: 'Use Sauté mode first for colour, then pressure cook for fast, rich flavour.',
+      steps: [
+        {
+          ingredients: [
+            'Chicken thighs (1kg, boneless skinless, cut into large chunks)',
+            'Olive oil (2 tbsp)',
+            'Salt and pepper',
+          ],
+          instruction: 'Set pressure cooker to Sauté on medium-high. Season chicken with salt and pepper, add oil, and brown chicken in batches for 2–3 minutes per side. Transfer browned chicken to a plate.',
+        },
+        {
+          ingredients: [
+            'Onion (1 large, sliced)',
+            'Garlic (4 cloves, minced)',
+            'Red capsicum (1, sliced)',
+            'Mushrooms (250g, sliced)',
+            'Tomato paste (2 tbsp)',
+            'Dried oregano (1 tsp)',
+            'Dried thyme (1 tsp)',
+            'Canned crushed tomatoes (1 x 400g can)',
+            'Chicken stock (1 cup / 250ml)',
+            'Pitted olives (1/2 cup, optional)',
+          ],
+          instruction: 'Still on Sauté, cook onion and capsicum for 3 minutes. Add garlic and mushrooms for 1 minute. Stir in tomato paste, oregano and thyme for 30 seconds. Add crushed tomatoes, stock and olives, then return chicken to the pot.',
+        },
+        {
+          ingredients: ['Fresh parsley (to serve, optional)'],
+          instruction: 'Seal the lid and cook on High Pressure for 10 minutes. Let pressure naturally release for 5 minutes, then quick release. Taste and season, then serve with pasta, mash or crusty bread and finish with parsley.',
+        },
+      ],
+    },
+  ],
+
   'nachos': [
     {
       method: 'air-fryer',

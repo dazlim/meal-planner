@@ -945,6 +945,62 @@ export const meals = [
       },
     ],
   },
+  {
+    id: 'weeknight-chicken-cacciatore',
+    title: 'Weeknight Chicken Cacciatore',
+    description: 'Rustic tomato, capsicum and olive chicken stew that is perfect with pasta or mashed potato.',
+    emoji: '🍗',
+    ingredients: [
+      'Chicken thighs (1kg, boneless skinless, cut into large chunks)',
+      'Onion (1 large, sliced)',
+      'Garlic (4 cloves, minced)',
+      'Red capsicum (1, sliced)',
+      'Mushrooms (250g, sliced)',
+      'Canned crushed tomatoes (1 x 400g can)',
+      'Tomato paste (2 tbsp)',
+      'Chicken stock (1 cup / 250ml)',
+      'Pitted olives (1/2 cup, optional)',
+      'Dried oregano (1 tsp)',
+      'Dried thyme (1 tsp)',
+      'Olive oil (2 tbsp)',
+      'Salt and pepper',
+      'Fresh parsley (to serve, optional)',
+    ],
+    steps: [
+      {
+        ingredients: [
+          'Chicken thighs (1kg, boneless skinless, cut into large chunks)',
+          'Olive oil (2 tbsp)',
+          'Salt and pepper',
+        ],
+        instruction:
+          'Season chicken pieces with salt and pepper. Heat olive oil in a large heavy pot over medium-high heat and brown the chicken in two batches for 2–3 minutes per side. Transfer to a plate once coloured — it does not need to be fully cooked yet.',
+      },
+      {
+        ingredients: [
+          'Onion (1 large, sliced)',
+          'Garlic (4 cloves, minced)',
+          'Red capsicum (1, sliced)',
+          'Mushrooms (250g, sliced)',
+          'Tomato paste (2 tbsp)',
+          'Dried oregano (1 tsp)',
+          'Dried thyme (1 tsp)',
+        ],
+        instruction:
+          'In the same pot, cook onion and capsicum for 4 minutes until softened. Add garlic and mushrooms and cook 2 minutes more. Stir in tomato paste, oregano and thyme for 1 minute to build flavour.',
+      },
+      {
+        ingredients: [
+          'Canned crushed tomatoes (1 x 400g can)',
+          'Chicken stock (1 cup / 250ml)',
+          'Pitted olives (1/2 cup, optional)',
+          'Fresh parsley (to serve, optional)',
+        ],
+        instruction:
+          'Return chicken to the pot, then add crushed tomatoes, stock and olives. Bring to a gentle simmer, cover and cook for 25–30 minutes until the chicken is tender and the sauce thickens. Taste and season. Serve with pasta, mash or crusty bread, and finish with parsley.',
+      },
+    ],
+  },
 ]
 
 export type Meal = (typeof meals)[0]
